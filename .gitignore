@@ -1,0 +1,6 @@
+*log.txt
+*.elf
+*.iso
+iso/
+build/
+
