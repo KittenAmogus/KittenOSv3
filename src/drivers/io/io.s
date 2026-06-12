@@ -11,6 +11,14 @@ outb:
   out dx, al
   ret
 
+global outw
+
+outw:
+  mov ax, [esp + 8]
+  mov dx, [esp + 4]
+  out dx, ax
+  ret
+
 global inb
 
 ; inb - returns a byte from the given I/O port

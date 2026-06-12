@@ -12,14 +12,15 @@ align 4       ; 4 byte aligned
   dd FLAGS
   dd CHECKSUM
 
-extern main ; Kernel entry
+extern kmain ; Kernel entry
 
 ; Entry
 loader:
   mov esp,  kernel_stack + KERNEL_STACK_SIZE ; Set up stack
  
+  push eax
   push ebx  ; Multiboot data to main
-  call main
+  call kmain
 
 ; Loop 4rvr
 .loop:

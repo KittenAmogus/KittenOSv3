@@ -3,6 +3,12 @@
 
 #include "stdint.h"
 
+#define KBD_BUFFER_SIZE  256
+
+extern char kbd_buffer[KBD_BUFFER_SIZE];
+extern unsigned int kbd_head;
+extern unsigned int kbd_tail;
+
 extern uint8_t isShiftPressed;
 
 // Without shift

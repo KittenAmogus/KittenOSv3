@@ -11,6 +11,7 @@ void initHeap(size_t ramSize) {
 }
 
 void *malloc(size_t size) {
+  size = (size + 3) & ~3; // Align to 4 bytes
   Block *bptr = _firstBlock;
 
   while (bptr != NULL) {
