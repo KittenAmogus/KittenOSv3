@@ -13,6 +13,11 @@ BUILD = build
 SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
+# Custom stdlibs
+LIBS_DIR  = src/libs
+LIBS = $(shell find $(LIBS_DIR) -mindepth 1 -type d)
+LIBS_INC = $(patsubst %,-I%,$(LIBS))
+
 # Sources
 SSOURCES = $(shell find src -name '*.s')
 CSOURCES = $(shell find src -name '*.c')
@@ -33,8 +38,12 @@ ISODIR    = iso
 ISOFILE   = os.iso
 GRUBFILES = grub/grub.cfg
 
+# BOCHS
+BOCHS = bochs
+BFLAGS = -f ./bochsrc.txt -q
 
-.PHONY: all clean
+
+.PHONY: all clean run
 
 all: $(TARGET) iso
 
@@ -44,11 +53,11 @@ $(BUILD)/%.o: src/%.s | $(BUILD)
 
 $(BUILD)/%.o: src/%.c | $(BUILD)
 	@echo "-- Compiling $< -> $@"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC)
 
 $(TARGET): $(OBJECTS)
 	@echo "-- Linking $@"
-	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS)
+	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC)
 
 clean:
 	@echo "-- Cleaning up"
@@ -65,4 +74,7 @@ iso: $(TARGET)
 	@cp $(GRUBFILES) $(ISODIR)/boot/grub/
 	@echo "-- Burning ISO file"
 	@grub-mkrescue -o $(ISOFILE) $(ISODIR)
+
+run:
+	$(BOCHS) $(BFLAGS)
 
