@@ -1,135 +1,130 @@
+#include "kernel.h"
+
 #include "stdio.h"
-#include "stdint.h"
+#include "string.h"
 #include "stdlib.h"
+#include "random.h"
 
 #include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "pic/pic.h"
 
-const char * const _hello_message = (
-  "Hello, User!\n"
-  "This is operating system, written with C and NASM, using\n"
-  "- The little book about OsDev\n"
-  "By @kittenamogus\n" "With help from Google AI\n"
-);
+#include "drivers/vga/vga.h"
 
-struct mboot_info {
-  unsigned int flags;
-  unsigned int mem_lower;
-  unsigned int mem_upper;
-} __attribute__((packed));
+// TODO: Shell.h
+typedef uint8_t (*shell_func)(char *args);
 
-void clearScreen(void) {
-  cursorPos(0, 0);
-  for (int a=0; a<(80 * 25); ++a) {
-    putc(0);
-  }
-  cursorPos(0, 0);
+typedef struct {
+  const char *name;
+  shell_func func;
+} shell_cmd;
+
+
+static uint8_t cmd_clear(char *args) {
+  clear_screen();
+  return 0;
 }
 
-// Returns 1 if s1 == s2
-int stringcmp(char *s1, char *s2) {
-  if (s1 == NULL || s2 == NULL) return 0;
-
-  while (true) {
-    // Not equal if s1[i] != s2[i]
-    if (*s1 != *s2) return 0;
-
-    // Not equal if one is shorter
-    else if ((*s1 == 0) ^ (*s2 == 0)) return 0;
- 
-    // Equal
-    else if (*s1 == 0) return 1;
-
-    ++s1;
-    ++s2;
+static uint8_t cmd_echo(char *args) {
+  if (args != NULL) {
+    puts(args);
+    return 0;
+  } else {
+    puts("Usage: echo <chars>");
+    return 1;
   }
 }
 
-int cmd_cmp(char *s, char *cmd) {
-  while (*cmd != 0) {
-    if (*s == 0 || *s == ' ') return 0;
-    else if (*s != *cmd) return 0;
-
-    ++s;
-    ++cmd; }
-
-  return (*s == ' ' || *s == 0);
+static uint8_t cmd_help(char *args) {
+  puts("Supported commands: ");
+  puts(" * help  - Show this menu");
+  puts(" * clear - Clear screen");
+  puts(" * echo  - Print text on screen");
+  return 0;
 }
 
-char *get_args(char *s) {
+static const shell_cmd cmd_table[] = {
+  {"help", cmd_help},
+  {"echo", cmd_echo},
+  {"clear", cmd_clear},
+};
+#define CMD_COUNT (sizeof(cmd_table) / sizeof(shell_cmd))
 
-  // Skip first word
-  while (*s != ' ' && *s != 0) {
-    ++s;
-  }
+// TODO: Shell.h
 
-  // Skip spacing
-  while (*s == ' ') {
-    ++s;
-  }
 
-  // Leading spaces protection
-  if (*s == 0) return NULL;
-
-  // Arg start
-  return s;
-}
-
-// Entry
-int kmain(struct mboot_info *mbi) {
-  // Init interrupts
+static void init_system(mboot_info *mbi) {
   gdt_init();
   idt_init();
   pic_remap();
+
   asm volatile ("sti");
 
-  // Init heap
-  size_t ramSize = (mbi->flags & 0x01 ? mbi->mem_upper + 1024 : (16 << 20));
-  initHeap(ramSize);
+  size_t ram_size = (
+    mbi->flags & 0x01 ? mbi->mem_upper + 1024 : (16 << 10));
+  initHeap(ram_size << 10); // KB to MB
 
-  /* === SETUP COMPLETE === */
+  vga_attrs(0x07, 0x01);
+  clear_screen();
 
-  vgaAttrs(7, 1); // Reset VGA
-  clearScreen();
   puts(_hello_message);
+}
 
-  /* === MAIN PROCESS === */
 
-  char *prompt = "user $ ";
- 
-  char *buff;
+static void shell(void) {
+  char *prompt = PROMPT;
+
+  uint8_t status = 0;
+  char *buff = NULL;
+  char *cmd = malloc(CMD_MAX);
+  char *args = malloc(CMD_MAX);
 
   while (true) {
-    putstr(prompt);
-    buff = getline(256);
+    printf("[%d] %s", status, prompt);
+    buff = getline(CMD_MAX);
+    if (buff == NULL) break;
 
-    if (cmd_cmp(buff, "clear")) {
-      clearScreen();
+    if (*buff == 0) continue;
+
+    copy_first(buff, cmd);
+    args = get_second(buff);
+
+    uint8_t found = 0;
+
+    for (uint16_t i=0; i<CMD_COUNT; ++i) {
+      // static const shell_cmd cmd_table[] = {
+      const shell_cmd *sptr = &(cmd_table[i]);
+      if (strcmp(sptr->name, cmd)) {
+        status = sptr->func(args);
+        found = 1;
+        break;
+      }
     }
 
-    else if (cmd_cmp(buff, "echo")) {
-      char *args = get_args(buff);
-      if (args != NULL)
-        puts(args);
-      else
-        puts("Where are your args? Give me more, now!");
+    // Unhandled cmd
+    if (!found) {
+      printf("Invalid command: '%s'\n", cmd);
+      status = 0xFF;
     }
 
-    else if (cmd_cmp(buff, "exit")) {
-      putstr("Exit\n");
-      break;
-    }
+    free(buff);
   }
 
-  puts("Warning! Triple fault will be executed...");
-  asm volatile (
-    "lidt (%0)\n"
-    "div %1"
-    :
-    : "r"(0), "r"(0)
-  );
+  free(cmd);
+  free(args);
 
+  printf("Shell exit");
+  return;
+}
+
+
+uint32_t kmain(mboot_info *mbi) {
+  init_system(mbi);
+  srand(0x12345678);
+
+  shell();
+
+  printf("Kernel exit\n");
   return 0;
 }
 

@@ -1,11 +1,12 @@
 #ifndef IO_H
 #define IO_H
 
-void outb(unsigned short port, unsigned char data);
-void outw(unsigned short port, unsigned short data);
-unsigned char inb(unsigned short port);
+#include "stdint.h"
 
-void fb_move_cursor(unsigned short pos);
+// External assembly functions
+void outb(uint16_t port, uint8_t data);
+void outw(uint16_t port, uint16_t data);
+uint8_t inb(uint16_t port);
 
 #endif // IO_H
 
