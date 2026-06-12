@@ -17,6 +17,8 @@ extern main ; Kernel entry
 ; Entry
 loader:
   mov esp,  kernel_stack + KERNEL_STACK_SIZE ; Set up stack
+ 
+  push ebx  ; Multiboot data to main
   call main
 
 ; Loop 4rvr
