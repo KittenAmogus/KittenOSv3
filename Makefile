@@ -13,7 +13,7 @@ BUILD = build
 SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
-# Custom stdlibs
+# Custom includes
 LIBS_DIR  = src/libs
 LIBS = $(shell find $(LIBS_DIR) -mindepth 1 -type d)
 LIBS_INC = $(patsubst %,-I%,$(LIBS))
@@ -23,8 +23,8 @@ SSOURCES = $(shell find src -name '*.s')
 CSOURCES = $(shell find src -name '*.c')
 
 # Objects
-SOBJECTS = $(patsubst src/%.s,$(BUILD)/%.o,$(SSOURCES))
-COBJECTS = $(patsubst src/%.c,$(BUILD)/%.o,$(CSOURCES))
+SOBJECTS = $(patsubst src/%.s,$(BUILD)/%.s.o,$(SSOURCES))
+COBJECTS = $(patsubst src/%.c,$(BUILD)/%.c.o,$(CSOURCES))
 OBJECTS = $(SOBJECTS) $(COBJECTS)
 
 # Link config
@@ -47,17 +47,17 @@ BFLAGS = -f ./bochsrc.txt -q
 
 all: $(TARGET) iso
 
-$(BUILD)/%.o: src/%.s | $(BUILD)
+$(BUILD)/%.s.o: src/%.s | $(BUILD)
 	@echo "-- Assembling $< -> $@"
 	$(ASM) $(SFLAGS) $< -o $@
 
-$(BUILD)/%.o: src/%.c | $(BUILD)
+$(BUILD)/%.c.o: src/%.c | $(BUILD)
 	@echo "-- Compiling $< -> $@"
-	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC)
+	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC) -Isrc
 
 $(TARGET): $(OBJECTS)
 	@echo "-- Linking $@"
-	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC)
+	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC) -Isrc
 
 clean:
 	@echo "-- Cleaning up"
