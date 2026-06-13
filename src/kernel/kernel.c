@@ -9,49 +9,11 @@
 #include "idt/idt.h"
 #include "pic/pic.h"
 
+#include "apps/apps.h"
+
 #include "drivers/vga/vga.h"
 
-// TODO: Shell.h
-typedef uint8_t (*shell_func)(char *args);
-
-typedef struct {
-  const char *name;
-  shell_func func;
-} shell_cmd;
-
-
-static uint8_t cmd_clear(char *args) {
-  clear_screen();
-  return 0;
-}
-
-static uint8_t cmd_echo(char *args) {
-  if (args != NULL) {
-    puts(args);
-    return 0;
-  } else {
-    puts("Usage: echo <chars>");
-    return 1;
-  }
-}
-
-static uint8_t cmd_help(char *args) {
-  puts("Supported commands: ");
-  puts(" * help  - Show this menu");
-  puts(" * clear - Clear screen");
-  puts(" * echo  - Print text on screen");
-  return 0;
-}
-
-static const shell_cmd cmd_table[] = {
-  {"help", cmd_help},
-  {"echo", cmd_echo},
-  {"clear", cmd_clear},
-};
-#define CMD_COUNT (sizeof(cmd_table) / sizeof(shell_cmd))
-
-// TODO: Shell.h
-
+uint32_t _grub_ram_size;
 
 static void init_system(mboot_info *mbi) {
   gdt_init();
@@ -63,6 +25,7 @@ static void init_system(mboot_info *mbi) {
   size_t ram_size = (
     mbi->flags & 0x01 ? mbi->mem_upper + 1024 : (16 << 10));
   initHeap(ram_size << 10); // KB to MB
+  _grub_ram_size = (mbi->mem_upper << 10) + (1 << 20);
 
   vga_attrs(0x07, 0x01);
   clear_screen();
@@ -91,11 +54,11 @@ static void shell(void) {
 
     uint8_t found = 0;
 
-    for (uint16_t i=0; i<CMD_COUNT; ++i) {
+    for (uint16_t i=0; i<app_count; ++i) {
       // static const shell_cmd cmd_table[] = {
-      const shell_cmd *sptr = &(cmd_table[i]);
-      if (strcmp(sptr->name, cmd)) {
-        status = sptr->func(args);
+      const app_t *app_ptr = &(app_table[i]);
+      if (strcmp(app_ptr->name, cmd)) {
+        status = app_ptr->func(args);
         found = 1;
         break;
       }

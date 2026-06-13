@@ -50,3 +50,27 @@ char *get_second(char *s) {
   return s;
 }
 
+uint32_t atoi(char *s) {
+  uint32_t num = 0;
+  while (*s != 0) {
+    num *= 10;
+    num += *s - '0';
+    ++s;
+  }
+  return num;
+}
+
+uint32_t atoh(char *s) {
+  uint32_t num = 0;
+
+  while (*s != 0) {
+    num <<= 4;
+    if (*s > '0' && *s <= '9')
+      num += (*s - '0');
+    else if (*s >= 'A' && *s <= 'F')
+      num += (*s - 'A') + 10;
+    ++s;
+  }
+
+  return num;
+}

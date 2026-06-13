@@ -12,5 +12,8 @@ uint8_t strncmp(char *s1, char *s2, uint32_t n);
 void copy_first(char *s, char *buff);
 char *get_second(char *s);
 
+uint32_t atoi(char *s);
+uint32_t atoh(char *s);
+
 #endif // STRING_H
 

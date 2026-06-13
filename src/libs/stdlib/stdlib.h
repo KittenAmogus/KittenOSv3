@@ -7,12 +7,14 @@
 typedef uint32_t size_t;
 
 typedef struct Block_s {
+  uint32_t magic;
   size_t size;
   uint8_t isFree;
   struct Block_s *next;
-} __attribute__((packed)) Block;
+} Block;
 
 #define META_SIZE sizeof(Block)
+#define BLOCK_MAGIC 0xDEADC0DE
 
 // Do not split if second block->size will be smaller than X bytes
 #define MIN_BLOCK_SIZE  8
@@ -22,6 +24,9 @@ void *malloc(size_t size);
 void *calloc(size_t n, size_t size);
 void *realloc(void *p, size_t size);
 void free(void *p);
+
+size_t get_heap_free(void);
+size_t get_heap_size(void);
 
 #endif // STDLIB_H
 
