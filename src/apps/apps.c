@@ -107,7 +107,10 @@ static uint32_t app_free(char *args) {
 }
 
 static uint32_t app_ls(char *args) {
-  if (superblock_mounted == NULL) return ENODEV;
+  if (superblock_mounted == NULL) {
+    puts("No mounted disk");
+    return ENODEV;
+  }
 
   // Allocate buffer
   void *buffer = malloc(BLOCK_SIZE);
@@ -116,7 +119,10 @@ static uint32_t app_ls(char *args) {
 
   // Allocate inode
   inode_t *inode = malloc(sizeof(inode_t));
-  if (inode == NULL) return ENOMEM;
+  if (inode == NULL) {
+    free(buffer);
+    return ENOMEM;
+  }
   memset(inode, 0, sizeof(inode_t));
 
   // Variables
@@ -128,12 +134,12 @@ static uint32_t app_ls(char *args) {
   ata_read_sector(INODE_TABLE_START, raw);
   memcpy(inode, buffer, sizeof(inode_t));
 
-  // Only directory can be checked  TODO: add non-root support
-
-  printf(
-    "Inode size: %d, type: %d, addr: %d", sizeof(inode_t), inode->type, (uint32_t)inode);
-
-  if (inode->type != FS_FILE_DIR) return ENOTDIR;
+  if (inode->type != FS_FILE_DIR) {
+    free(buffer);
+    free(inode);
+    puts("Root is not a directory");
+    return ENOTDIR;
+  }
   puts("/");  // Root
 
   // Check all data segments  TODO: extendable segment
@@ -178,6 +184,25 @@ static uint32_t app_mnt(char *args) {
   return status;
 }
 
+static uint32_t app_touch(char *args) {
+  if (args == NULL) return EINVAL;
+
+  inode_t *src = malloc(sizeof(inode_t));
+  if (src == NULL) return ENOMEM;
+  memset(src, 0, sizeof(inode_t));
+
+  puts("Creating file...");
+  // DEBUG
+  src->size = 1024;
+  src->type = FS_FILE_FILE;
+  src->data_blocks[0] = DATA_TABLE_START;
+  uint32_t status = create_inode(src);
+  if (status != 0)
+    printf("Failed to create inode %d\n", status);
+
+  return status;
+}
+
 app_t app_table[] = {
   {"clear",   "Fills screen with empty chars", app_clear},
   {"echo",    "Prints args in stdout", app_echo},
@@ -188,6 +213,7 @@ app_t app_table[] = {
   {"ls",      "Prints all files in current dir (now only root)", app_ls},
   {"mount",   "Mounts disk (formated in KittenFS)", app_mnt},
   {"mkfs",    "Format disk in KittenFS", app_mkfs},
+  {"touch",   "Creates inode (and link later)", app_touch},
 };
 const uint32_t app_count = sizeof(app_table) / sizeof(app_t);
 

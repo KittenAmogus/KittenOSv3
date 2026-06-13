@@ -19,7 +19,7 @@ typedef enum {
   FS_FILE_DIR   = 2
 } FS_FILE_TYPE;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
   uint32_t  magic_start;
   uint32_t  block_size;
 
@@ -33,7 +33,7 @@ typedef struct {
   uint32_t  data_table_start;
 
   // stretch to sector size
-  uint8_t _unused[BLOCK_SIZE - 32 - 4];
+  uint32_t _unused[128 - 8 - 1];
 
   uint32_t  magic_end;
 } superblock_t; // 512 bytes
@@ -46,6 +46,7 @@ typedef  struct {
 
   uint32_t data_blocks[DATA_CNT];  // Data addrs
 } inode_t;  // 16 + (4*DATA_CNT) bytes
+#define INODE_SIZE  sizeof(inode_t)
 
 typedef struct {
   uint32_t inode;   // Inode addr
@@ -57,6 +58,8 @@ typedef struct {
 
 uint32_t mkfs(void);
 uint32_t mount(void);
+
+uint32_t create_inode(inode_t *src);
 
 #endif // FS_H
 

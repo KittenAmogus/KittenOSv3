@@ -24,8 +24,8 @@ uint8_t strncmp(char *s1, char *s2, uint32_t n) {
 }
 
 void *memcpy(void *dest, const void *src, uint32_t n) {
-  char *dest_c  = (char*)dest;
-  const char *src_c = (const char*)src;
+  uint8_t *dest_c  = (uint8_t*)dest;
+  const uint8_t *src_c = (const uint8_t*)src;
   while (n > 0) {
     *dest_c = *src_c;
     ++dest_c;
@@ -36,8 +36,8 @@ void *memcpy(void *dest, const void *src, uint32_t n) {
 }
 
 void *memset(void *s, int c, uint32_t n) {
-  char *s_c = (char*)s;
-  char c_c = (char)c;
+  uint8_t *s_c = (uint8_t*)s;
+  uint8_t c_c = (uint8_t)c;
   while (n > 0) {
     *s_c = c_c;
     ++s_c;

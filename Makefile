@@ -84,7 +84,7 @@ iso: $(TARGET)
 bochs:
 	$(BOCHS) $(BFLAGS)
 
-qemu: hda
+qemu:
 	$(QEMU) $(QFLAGS)
 
 hda:

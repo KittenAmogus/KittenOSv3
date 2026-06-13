@@ -66,7 +66,7 @@ static uint32_t create_inode_table(void) {
   inode_ptr->size     = 0;
   inode_ptr->type     = FS_FILE_DIR;
   inode_ptr->addr_extend    = 0;
-  memset(inode_ptr->data_blocks, 0, sizeof(uint32_t) * DATA_CNT);
+  memset(inode_ptr->data_blocks, 0, sizeof(inode_ptr->data_blocks));
   inode_ptr->data_blocks[0] = DATA_TABLE_START;
 
   // Write to disk
@@ -161,4 +161,79 @@ uint32_t mount(void) {
   free(buffer);
   return SUCCESS;
 }
+
+
+uint32_t create_inode(inode_t *src) {
+  void *buffer = malloc(BLOCK_SIZE);
+  if (buffer == NULL) return ENOMEM;
+  // no memset, will be erased with ata_read_sector
+
+  // Ensure disk exists and mounted
+  if (superblock_mounted == NULL) return ENODEV;
+
+  // No free space
+  if (superblock_mounted->inode_free_cnt < 1)
+    return ENOSPC;
+
+  // Variables
+  uint8_t *raw8;
+  uint16_t *raw = (uint16_t*)buffer;
+  uint32_t block = INODE_TABLE_START;
+  inode_t *inode;
+
+  uint32_t inode_id;
+
+  // Block loop
+  do {
+    // Read sector
+    ata_read_sector(block, raw);
+
+    // Inode loop
+    raw8 = (uint8_t*)buffer;
+    do {
+      inode = (inode_t*)raw8;
+
+      // Free inode
+      if (inode->type == FS_FILE_UNDEF)
+        break;
+ 
+      // Next inode
+      raw8 += INODE_SIZE;
+      ++inode_id;
+
+      // Ram8 is in block
+    } while (raw8 < (uint8_t*)buffer + BLOCK_SIZE);
+
+    // Found inode
+    if (inode->type == FS_FILE_UNDEF)
+      break;
+
+    // Next block
+    ++block;
+
+    // block is in inode table
+  } while (block < DATA_TABLE_START);
+
+  // No free space
+  if (inode->type != FS_FILE_UNDEF) {
+    free(buffer);
+    return ENOSPC;
+  }
+
+  // Copy inode into RAM
+  memcpy(inode, src, INODE_SIZE);
+  inode->inode_id = inode_id;
+
+  // Write disk
+  raw = (uint16_t*)buffer;
+  ata_write_sector(block, raw);
+
+  // Update free space
+  superblock_mounted->inode_free_cnt--;     // In RAM
+  ata_write_sector(1, (uint16_t*)superblock_mounted);  // On disk
+
+  free(buffer);
+  return SUCCESS;
+}
+
 

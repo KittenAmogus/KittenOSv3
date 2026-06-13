@@ -88,20 +88,15 @@ uint32_t kmain(mboot_info *mbi) {
   uint32_t status;
   init_system(mbi);
 
-  /*mkfs();
-  mount();*/
-  /*status = mount();
-  if (status != 0)
-    printf("Mount failed! %d\n", status);*/
+  status = mount();
+  while (status != 0) {
+    printf("(%d) Trying again...\n", status);
+    mkfs();
+    status = mount();
+  }
+  puts("Mounted successfully");
 
-  app_t *app;
-  app = (app_t*)&app_table[8];
-  printf("LS: %d\n", app->func("a"));
-  app = (app_t*)&app_table[7];
-  printf("LS: %d\n", app->func("a"));
-  app = (app_t*)&app_table[6];
-  printf("LS: %d\n", app->func("a"));
-  // shell();
+  shell();
 
   srand(0x12345678);
   printf("Kernel exit\n");
