@@ -64,5 +64,6 @@ void ata_write_sector(uint32_t lba, const uint16_t *buff) {
 
   ata_wait_ready();               // Wait for disk to prepare
   outsw(ATA_REG_DATA, buff, 256); // Write 256 words
+  while (inb(ATA_REG_COMMAND) & ATA_STATUS_BSY);  // Wait for write
 }
 

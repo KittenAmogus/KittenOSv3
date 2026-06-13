@@ -134,6 +134,8 @@ static uint32_t app_ls(char *args) {
   ata_read_sector(INODE_TABLE_START, raw);
   memcpy(inode, buffer, sizeof(inode_t));
 
+  printf("DEBUG: id=%d, size=%d, type=%d\n", inode->inode_id, inode->size, inode->type);
+
   if (inode->type != FS_FILE_DIR) {
     free(buffer);
     free(inode);

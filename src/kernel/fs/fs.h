@@ -8,7 +8,7 @@
 #define MAX_INODES  4096
 #define DATA_CNT    12  // Data block count for one file
 #define SUPERBLOCK_MAGIC_START  0xCA75C0DE  // Start of superblock
-#define SUPERBLOCK_MAGIC_END    0x0000AA55  // End of superblock
+#define SUPERBLOCK_MAGIC_END    0x78653412  // End of superblock
 
 #define INODE_TABLE_START 2
 #define DATA_TABLE_START  130
@@ -19,7 +19,7 @@ typedef enum {
   FS_FILE_DIR   = 2
 } FS_FILE_TYPE;
 
-typedef struct __attribute__((packed)) {
+typedef struct {
   uint32_t  magic_start;
   uint32_t  block_size;
 
@@ -36,7 +36,7 @@ typedef struct __attribute__((packed)) {
   uint32_t _unused[128 - 8 - 1];
 
   uint32_t  magic_end;
-} superblock_t; // 512 bytes
+}__attribute__((packed)) superblock_t; // 512 bytes
 
 typedef  struct {
   uint32_t inode_id;    // Table index

@@ -41,6 +41,7 @@ static uint32_t create_superblock(void) {
   block_ptr->inode_table_start  = INODE_TABLE_START;
   block_ptr->data_table_start   = DATA_TABLE_START;
   block_ptr->magic_end          = SUPERBLOCK_MAGIC_END;
+  memset(block_ptr->_unused, 0, sizeof(block_ptr->_unused));
 
   // Write to disk
   raw = (uint16_t*)buffer;

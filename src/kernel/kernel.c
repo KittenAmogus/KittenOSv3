@@ -88,6 +88,9 @@ uint32_t kmain(mboot_info *mbi) {
   uint32_t status;
   init_system(mbi);
 
+  printf("Size of superblock... %d\n", sizeof(superblock_t));
+  printf("Size of inode... %d\n", sizeof(inode_t));
+
   status = mount();
   while (status != 0) {
     printf("(%d) Trying again...\n", status);
