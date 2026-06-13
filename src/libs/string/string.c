@@ -27,7 +27,7 @@ void *memcpy(void *dest, const void *src, uint32_t n) {
   char *dest_c  = (char*)dest;
   const char *src_c = (const char*)src;
   while (n > 0) {
-    *dest_c = (char)*src_c;
+    *dest_c = *src_c;
     ++dest_c;
     ++src_c;
     --n;

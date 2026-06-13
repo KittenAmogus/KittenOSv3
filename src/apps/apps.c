@@ -129,6 +129,10 @@ static uint32_t app_ls(char *args) {
   memcpy(inode, buffer, sizeof(inode_t));
 
   // Only directory can be checked  TODO: add non-root support
+
+  printf(
+    "Inode size: %d, type: %d, addr: %d", sizeof(inode_t), inode->type, (uint32_t)inode);
+
   if (inode->type != FS_FILE_DIR) return ENOTDIR;
   puts("/");  // Root
 
@@ -160,6 +164,20 @@ static uint32_t app_ls(char *args) {
   return SUCCESS;
 }
 
+static uint32_t app_mkfs(char *args) {
+  uint32_t status = mkfs();
+  if (status != 0)
+    printf("Failed to make fs: %d\n", status);
+  return status;
+}
+
+static uint32_t app_mnt(char *args) {
+  uint32_t status = mount();
+  if (status != 0)
+    printf("Failed to mount: %d\n", status);
+  return status;
+}
+
 app_t app_table[] = {
   {"clear",   "Fills screen with empty chars", app_clear},
   {"echo",    "Prints args in stdout", app_echo},
@@ -168,6 +186,8 @@ app_t app_table[] = {
   {"malloc",  "Allocate <args> bytes", app_malloc},
   {"free",    "Free RAM block at <args> addr", app_free},
   {"ls",      "Prints all files in current dir (now only root)", app_ls},
+  {"mount",   "Mounts disk (formated in KittenFS)", app_mnt},
+  {"mkfs",    "Format disk in KittenFS", app_mkfs},
 };
 const uint32_t app_count = sizeof(app_table) / sizeof(app_t);
 
