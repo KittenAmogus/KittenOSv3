@@ -38,9 +38,15 @@ ISODIR    = iso
 ISOFILE   = os.iso
 GRUBFILES = grub/grub.cfg
 
+DISKIMG = ./hda.img
+
 # BOCHS
 BOCHS = bochs
 BFLAGS = -f ./bochsrc.txt -q
+
+# QEMU
+QEMU = qemu-system-i386
+QFLAGS = -cdrom $(ISOFILE) -hda $(DISKIMG) -boot d
 
 
 .PHONY: all clean run
@@ -75,6 +81,12 @@ iso: $(TARGET)
 	@echo "-- Burning ISO file"
 	@grub-mkrescue -o $(ISOFILE) $(ISODIR)
 
-run:
+bochs:
 	$(BOCHS) $(BFLAGS)
+
+qemu: hda
+	$(QEMU) $(QFLAGS)
+
+hda:
+	@dd if=/dev/urandom of=$(DISKIMG) bs=1M count=32
 

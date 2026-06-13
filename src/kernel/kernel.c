@@ -12,6 +12,7 @@
 #include "apps/apps.h"
 
 #include "drivers/vga/vga.h"
+#include "kernel/fs/fs.h"
 
 uint32_t _grub_ram_size;
 
@@ -34,6 +35,7 @@ static void init_system(mboot_info *mbi) {
 }
 
 
+// TODO: Move to apps
 static void shell(void) {
   char *prompt = PROMPT;
 
@@ -82,11 +84,21 @@ static void shell(void) {
 
 
 uint32_t kmain(mboot_info *mbi) {
+  uint32_t status;
   init_system(mbi);
-  srand(0x12345678);
+
+  status = mkfs();
+  if (status != 0)
+    printf("Mkfs failed! %d\n", status);
+  else {
+    status = mount();
+    if (status != 0)
+      printf("Mount failed! %d\n", status);
+  }
 
   shell();
 
+  srand(0x12345678);
   printf("Kernel exit\n");
   return 0;
 }

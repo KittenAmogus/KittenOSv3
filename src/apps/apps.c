@@ -6,6 +6,11 @@
 #include "string.h"
 #include "random.h"
 
+#include "kernel/fs/fs.h"
+#include "drivers/ata/ata.h"
+
+extern superblock_t *sblock_mnt;
+
 static const char *noargs_echo = "Usage: echo <string>";
 
 static uint32_t app_clear(char *args) {
@@ -101,6 +106,45 @@ static uint32_t app_free(char *args) {
 }
 
 
+static uint32_t app_ls(char *args) {
+  if (sblock_mnt == NULL) return 1;
+  void *buff = malloc(BLOCK_SIZE);
+  if (buff == NULL) return 2;
+
+  ata_read_sector(0 + INODE_TABLE_START, (uint16_t*)buff);
+  inode_t *inode = malloc(sizeof(inode_t));
+
+  uint8_t *raw = (uint8_t*)buff;
+  uint8_t *rawd = (uint8_t*)inode;
+  for (uint32_t i=0; i<sizeof(inode_t); ++i) {
+    *rawd = *raw;
+    ++raw;
+    ++rawd;
+  }
+ 
+  for (uint32_t i=0; i<DATA_CNT; ++i) {
+    if (inode->data_blocks[i] == 0) break; // End of data
+    ata_read_sector(inode->data_blocks[i], (uint16_t*)buff);
+
+    raw = (uint8_t*)buff;
+    dirent_t *dir = (dirent_t*)raw;
+
+    puts(".");
+    do {
+      if (dir->type == 0) break;
+      printf("|- [%d] %s\n", dir->type, dir->name);
+
+      raw += dir->rec_len;  // Next dirent
+      dir = (dirent_t*)raw; // Cur dirent
+    } while (raw < (uint8_t*)buff + BLOCK_SIZE);
+  }
+
+  free(inode);
+  free(buff);
+  return 0;
+}
+
+
 app_t app_table[] = {
   {"clear",   "Fills screen with empty chars", app_clear},
   {"echo",    "Prints args in stdout", app_echo},
@@ -108,6 +152,7 @@ app_t app_table[] = {
   {"fetch",   "Prints some OS and hardware info", app_fetch},
   {"malloc",  "Allocate <args> bytes", app_malloc},
   {"free",    "Free RAM block at <args> addr", app_free},
+  {"ls",      "Prints all files in current dir", app_ls},
 };
 const uint32_t app_count = sizeof(app_table) / sizeof(app_t);
 

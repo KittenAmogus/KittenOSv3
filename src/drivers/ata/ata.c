@@ -4,7 +4,28 @@
 
 static void ata_wait_ready(void) {
   while (inb(ATA_REG_COMMAND) & ATA_STATUS_BSY);    // Wait while busy
-  while (!(inb(ATA_REG_COMMAND) & ATA_STATUS_DRQ)); // Wait until ready
+  // while (!(inb(ATA_REG_COMMAND) & ATA_STATUS_DRQ)); // Wait until ready
+}
+
+uint32_t ata_identify_disk(uint16_t *buff) {
+  // Disk
+  outb(ATA_REG_DRIVE, 0xA0);
+
+  // Zeroes
+  outb(ATA_REG_SECCOUNT, 0);
+  outb(ATA_REG_LBA_LO, 0);
+  outb(ATA_REG_LBA_MID, 0);
+  outb(ATA_REG_LBA_HI, 0);
+ 
+  // Command
+  outb(ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
+
+  if (inb(ATA_REG_COMMAND) == 0) return 1;  // No disk
+
+  // Read data
+  ata_wait_ready();
+  insw(ATA_REG_DATA, buff, 256);
+  return 0;
 }
 
 void ata_read_sector(uint32_t lba, uint16_t *buff) {
