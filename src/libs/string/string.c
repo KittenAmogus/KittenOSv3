@@ -23,6 +23,29 @@ uint8_t strncmp(char *s1, char *s2, uint32_t n) {
   return 0;
 }
 
+void *memcpy(void *dest, const void *src, uint32_t n) {
+  char *dest_c  = (char*)dest;
+  const char *src_c = (const char*)src;
+  while (n > 0) {
+    *dest_c = (char)*src_c;
+    ++dest_c;
+    ++src_c;
+    --n;
+  }
+  return dest;
+}
+
+void *memset(void *s, int c, uint32_t n) {
+  char *s_c = (char*)s;
+  char c_c = (char)c;
+  while (n > 0) {
+    *s_c = c_c;
+    ++s_c;
+    --n;
+  }
+  return s;
+}
+
 void copy_first(char *s, char *buff) {
   if (buff == NULL || s == NULL) return;
 

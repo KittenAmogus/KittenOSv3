@@ -4,6 +4,8 @@
 #include "stdint.h"
 
 #define BLOCK_SIZE  512 // Disk sector size
+#define MIN_SECTORS 128
+#define MAX_INODES  4096
 #define DATA_CNT    12  // Data block count for one file
 #define SUPERBLOCK_MAGIC_START  0xCA75C0DE  // Start of superblock
 #define SUPERBLOCK_MAGIC_END    0x0000AA55  // End of superblock

@@ -1,6 +1,7 @@
 #include "apps.h"
 
 #include "stdio.h"
+#include "errno.h"
 #include "stdint.h"
 #include "stdlib.h"
 #include "string.h"
@@ -9,7 +10,7 @@
 #include "kernel/fs/fs.h"
 #include "drivers/ata/ata.h"
 
-extern superblock_t *sblock_mnt;
+extern superblock_t *superblock_mounted;
 
 static const char *noargs_echo = "Usage: echo <string>";
 
@@ -105,45 +106,59 @@ static uint32_t app_free(char *args) {
   return 0;
 }
 
-
 static uint32_t app_ls(char *args) {
-  if (sblock_mnt == NULL) return 1;
-  void *buff = malloc(BLOCK_SIZE);
-  if (buff == NULL) return 2;
+  if (superblock_mounted == NULL) return ENODEV;
 
-  ata_read_sector(0 + INODE_TABLE_START, (uint16_t*)buff);
+  // Allocate buffer
+  void *buffer = malloc(BLOCK_SIZE);
+  if (buffer == NULL) return ENOMEM;
+  memset(buffer, 0, BLOCK_SIZE);
+
+  // Allocate inode
   inode_t *inode = malloc(sizeof(inode_t));
+  if (inode == NULL) return ENOMEM;
+  memset(inode, 0, sizeof(inode_t));
 
-  uint8_t *raw = (uint8_t*)buff;
-  uint8_t *rawd = (uint8_t*)inode;
-  for (uint32_t i=0; i<sizeof(inode_t); ++i) {
-    *rawd = *raw;
-    ++raw;
-    ++rawd;
-  }
- 
+  // Variables
+  uint16_t *raw = (uint16_t*)buffer;
+  uint8_t *rawdata;
+  dirent_t *file;
+
+  // Read
+  ata_read_sector(INODE_TABLE_START, raw);
+  memcpy(inode, buffer, sizeof(inode_t));
+
+  // Only directory can be checked  TODO: add non-root support
+  if (inode->type != FS_FILE_DIR) return ENOTDIR;
+  puts("/");  // Root
+
+  // Check all data segments  TODO: extendable segment
   for (uint32_t i=0; i<DATA_CNT; ++i) {
-    if (inode->data_blocks[i] == 0) break; // End of data
-    ata_read_sector(inode->data_blocks[i], (uint16_t*)buff);
+    if (inode->data_blocks[i] == 0) break;
+    ata_read_sector(inode->data_blocks[i], raw);
 
-    raw = (uint8_t*)buff;
-    dirent_t *dir = (dirent_t*)raw;
+    // Pointers
+    file = (dirent_t*)raw;
+    rawdata = (uint8_t*)raw;
 
-    puts(".");
+    // File loop
     do {
-      if (dir->type == 0) break;
-      printf("|- [%d] %s\n", dir->type, dir->name);
+      if (file->type == 0) break; // Undefined file(end)
+      printf("|-%s (%d)\n", file->name, file->type);
+ 
+      // Next file
+      rawdata += file->rec_len;
+      file = (dirent_t*)rawdata;
 
-      raw += dir->rec_len;  // Next dirent
-      dir = (dirent_t*)raw; // Cur dirent
-    } while (raw < (uint8_t*)buff + BLOCK_SIZE);
+      // While rawdata is inside one block
+    } while ((uint32_t)file < (uint32_t)((uint8_t*)buffer + BLOCK_SIZE));
   }
 
+  // Free RAM
   free(inode);
-  free(buff);
-  return 0;
+  free(buffer);
+  return SUCCESS;
 }
-
 
 app_t app_table[] = {
   {"clear",   "Fills screen with empty chars", app_clear},
@@ -152,7 +167,7 @@ app_t app_table[] = {
   {"fetch",   "Prints some OS and hardware info", app_fetch},
   {"malloc",  "Allocate <args> bytes", app_malloc},
   {"free",    "Free RAM block at <args> addr", app_free},
-  {"ls",      "Prints all files in current dir", app_ls},
+  {"ls",      "Prints all files in current dir (now only root)", app_ls},
 };
 const uint32_t app_count = sizeof(app_table) / sizeof(app_t);
 
