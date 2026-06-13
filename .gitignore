@@ -3,4 +3,5 @@
 *.iso
 iso/
 build/
+*.img
 
