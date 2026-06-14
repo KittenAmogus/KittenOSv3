@@ -5,7 +5,7 @@ LD  = ld
 
 # Flags
 SFLAGS  = -f elf32
-CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra
+CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra -Wno-unused-parameter
 LDFLAGS = -melf_i386
 
 # Directories

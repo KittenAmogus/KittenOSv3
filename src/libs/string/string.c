@@ -1,26 +1,28 @@
 #include "string.h"
 
+const char *nums_letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 uint8_t strcmp(char *s1, char *s2) {
-  if (s1 == NULL || s2 == NULL) return 0;
+  if (s1 == NULL || s2 == NULL) return 1;
 
   while (*s1 == *s2) {
-    if (*s1 == 0) return 1;
+    if (*s1 == 0) return 0;
     ++s1;
     ++s2;
   }
-  return 0;
+  return 1;
 }
 
 uint8_t strncmp(char *s1, char *s2, uint32_t n) {
-  if (s1 == NULL || s2 == NULL) return 0;
-  if (n == 0) return 1;
+  if (s1 == NULL || s2 == NULL) return 1;
+  if (n == 0) return 0;
 
   while (*s1 == *s2) {
-    if (--n == 0 || *s1 == 0) return 1;
+    if (--n == 0 || *s1 == 0) return 0;
     ++s1;
     ++s2;
   }
-  return 0;
+  return 1;
 }
 
 void *memcpy(void *dest, const void *src, uint32_t n) {
@@ -46,16 +48,24 @@ void *memset(void *s, int c, uint32_t n) {
   return s;
 }
 
-void copy_first(char *s, char *buff) {
-  if (buff == NULL || s == NULL) return;
-
+uint32_t firstlen(char *s) {
+  uint32_t len = 0;
   while (*s != 0 && *s != ' ') {
-    *buff = *s;
     ++s;
-    ++buff;
+    ++len;
   }
+  return len;
+}
 
-  *buff = 0;
+char *parse_second(char *s) {
+  while (*s != 0 && *s != ' ')
+    ++s;
+
+  while (*s == ' ')
+    ++s;
+
+  if (*s == 0) return NULL;
+  return s;
 }
 
 char *get_second(char *s) {
@@ -97,3 +107,116 @@ uint32_t atoh(char *s) {
 
   return num;
 }
+
+uint32_t strlen(const char *s) {
+  if (s == NULL) return 0;
+  uint32_t len = 0;
+  while (*s != 0) {
+    ++len;
+    ++s;
+  }
+  return len;
+}
+
+char *replace(
+  const char *s,
+  const char *from, const char *to,
+  uint32_t maxlen) {
+  // Allocate buffer
+  void *buffer = malloc(maxlen);
+  if (buffer == NULL) return NULL;
+
+  // Pointers
+  char *dest = (char*)buffer;
+  char *src  = (char*)s;
+
+  // Lengths
+  uint32_t fromlen = strlen(from);
+  uint32_t tolen   = strlen(to);
+  
+  uint32_t freespc = maxlen - 1;
+  while (*src != 0 && freespc > 0) {
+    if (strncmp(src, from, fromlen) == 0) {
+      if (freespc < tolen) break; // Not enough space
+      // Copy to buffer
+      memcpy(dest, to, tolen);
+      dest += tolen;
+      src  += fromlen;
+      freespc -= tolen;
+    } else {
+      // Copy char
+      *dest = *src;
+      ++dest;
+      ++src;
+      --freespc;
+    }
+  }
+
+  *dest = 0; // Null-terminated string
+  return (char*)buffer;
+}
+
+
+char *replacen(
+  const char *s,
+  const char *from, const char *to,
+  uint32_t maxlen, uint32_t n) {
+  // Allocate buffer
+  void *buffer = malloc(maxlen);
+  if (buffer == NULL) return NULL;
+
+  // Pointers
+  char *dest = (char*)buffer;
+  char *src  = (char*)s;
+
+  // Lengths
+  uint32_t fromlen = strlen(from);
+  uint32_t tolen   = strlen(to);
+
+  uint32_t nc = n;
+  uint32_t freespc = maxlen - 1;
+  while (*src != 0 && freespc > 0) {
+    if (strncmp(src, from, fromlen) == 0) {
+      if (freespc < tolen || nc < 1) break; // Not enough space
+      // Copy to buffer
+      memcpy(dest, to, tolen);
+      dest += tolen;
+      src  += fromlen;
+      --nc;
+      freespc -= tolen;
+    } else {
+      // Copy char
+      *dest = *src;
+      ++dest;
+      ++src;
+      --freespc;
+    }
+  }
+
+  *dest = 0; // Null-terminated string
+  return (char*)buffer;
+}
+
+
+char *itoa(uint32_t num, char *str, uint32_t base) {
+  char *strc = str + 11;  // last
+  uint32_t nc = num;      // Copy of N
+  uint32_t rem = 0;
+
+  *strc = 0;
+
+  if (num == 0) {
+    --strc;
+    *strc = '0';
+    return strc;
+  }
+
+  while (nc > 0) {
+    rem = nc % base;
+    nc /= base;
+    --strc;
+    *strc = nums_letters[rem];
+  }
+  return strc;
+}
+

@@ -3,9 +3,6 @@
 
 #include "stdint.h"
 
-#define PROMPT  "@user => "
-#define CMD_MAX 256
-
 // Prints after boot
 const char * const _hello_message = (
   "Hello, User!\n"

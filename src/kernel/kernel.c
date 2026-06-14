@@ -35,55 +35,8 @@ static void init_system(mboot_info *mbi) {
 }
 
 
-// TODO: Move to apps
-static void shell(void) {
-  char *prompt = PROMPT;
-
-  uint8_t status = 0;
-  char *buff = NULL;
-  char *cmd = malloc(CMD_MAX);
-  char *args = malloc(CMD_MAX);
-
-  while (true) {
-    printf("[%d] %s", status, prompt);
-    buff = getline(CMD_MAX);
-    if (buff == NULL) break;
-
-    if (*buff == 0) continue;
-
-    copy_first(buff, cmd);
-    args = get_second(buff);
-
-    uint8_t found = 0;
-
-    for (uint16_t i=0; i<app_count; ++i) {
-      // static const shell_cmd cmd_table[] = {
-      const app_t *app_ptr = &(app_table[i]);
-      if (strcmp(app_ptr->name, cmd)) {
-        status = app_ptr->func(args);
-        found = 1;
-        break;
-      }
-    }
-
-    // Unhandled cmd
-    if (!found) {
-      printf("Invalid command: '%s'\n", cmd);
-      status = 0xFF;
-    }
-
-    free(buff);
-  }
-
-  free(cmd);
-  free(args);
-
-  printf("Shell exit");
-  return;
-}
-
-
 extern app_t app_table[];
+
 uint32_t kmain(mboot_info *mbi) {
   uint32_t status;
   init_system(mbi);
@@ -99,7 +52,8 @@ uint32_t kmain(mboot_info *mbi) {
   }
   puts("Mounted successfully");
 
-  shell();
+  app_t *shell_app = &app_table[0];
+  shell_app->func(NULL);
 
   srand(0x12345678);
   printf("Kernel exit\n");

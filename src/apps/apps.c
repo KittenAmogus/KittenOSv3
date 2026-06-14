@@ -12,6 +12,9 @@
 
 extern superblock_t *superblock_mounted;
 
+const char prompt[] = "($status) => ";
+#define PROMPT_LEN (sizeof(prompt))
+
 static const char *noargs_echo = "Usage: echo <string>";
 
 static uint32_t app_clear(char *args) {
@@ -205,7 +208,67 @@ static uint32_t app_touch(char *args) {
   return status;
 }
 
+uint32_t app_shell(char *args) {
+  uint32_t status = 0;
+  char itoa_b[12];
+  char *buffer;
+
+  uint32_t cmdlen;
+  char *cmd_args;
+
+  do {
+    char *status_b = itoa(status, itoa_b, 10);
+    char *prompt_b = replacen(prompt, "$status", status_b, 128, 999);
+ 
+    if (prompt_b == NULL) return ENOMEM;
+
+    putstr(prompt_b);
+    free(prompt_b);
+
+    buffer = getline(256);
+
+    if (buffer == NULL) break;
+    if (*buffer == 0) {
+      free(buffer);
+      continue;
+    }
+
+    cmdlen = firstlen(buffer);
+    cmd_args = parse_second(buffer);
+ 
+    const app_t *app_ptr = &(app_table[0]);
+    const app_t *app = NULL;
+
+    if (strncmp(buffer, "exit", cmdlen) == 0 && cmdlen == 4) {
+      free(buffer);
+      break;
+    }
+
+    do {
+      if (strncmp(app_ptr->name, buffer, cmdlen) == 0 && app_ptr->name[cmdlen] == 0) {
+        app = app_ptr;
+        break;
+      }
+      ++app_ptr;
+    } while (app == NULL && app_ptr < (app_t*)&(app_table[0]) + app_count);
+
+    if (app != NULL) {
+      status = app->func(cmd_args);
+    } else {
+      puts("Command not found, type 'help'");
+      status = 255;
+    }
+
+    free(buffer);
+
+  } while (true);
+
+  puts("Shell exit");
+  return SUCCESS;
+}
+
 app_t app_table[] = {
+  {"shell",   "Shell application", app_shell},
   {"clear",   "Fills screen with empty chars", app_clear},
   {"echo",    "Prints args in stdout", app_echo},
   {"help",    "Prints list of apps with their descriptions", app_help},
