@@ -1,240 +1,192 @@
 #include "fs.h"
 
+#include "errno.h"
 #include "stdint.h"
 #include "stdlib.h"
 #include "string.h"
-#include "errno.h"
 
 #include "drivers/ata/ata.h"
 
-// Mounted disk copied data
-superblock_t *superblock_mounted;
+superblock_t *mounted_sb;
 
-static uint32_t create_superblock(void) {
-  // Allocate buffer
-  void *buffer = malloc(BLOCK_SIZE);
+
+// Static
+static uint32_t mkfs_superblock(void) {
+  // Allocate memory
+  void *buffer = malloc(SIZE_BLOCK);
   if (buffer == NULL) return ENOMEM;
-  memset(buffer, 0, BLOCK_SIZE);
+
+  // Pointers
+  superblock_t *block_ptr = (superblock_t*)buffer; uint16_t *raw_16        = (uint16_t*)buffer;
 
   // Variables
   uint32_t sectors;
-  uint16_t *raw = (uint16_t *)buffer;
 
-  // Identify disk
-  uint32_t status = ata_identify_disk(raw);
-  if (status != SUCCESS) return status;
-
-  // Count sectors
-  sectors = (((uint32_t)raw[61]) << 16) | ((uint32_t)raw[60]);
-  if (sectors < MIN_SECTORS) return ENOSPC;
-
-  // Create superblock in buffer
-  superblock_t *block_ptr = (superblock_t*)buffer;
-
-  // Write data
-  block_ptr->magic_start  = SUPERBLOCK_MAGIC_START;
-  block_ptr->block_size   = BLOCK_SIZE;
-  block_ptr->inode_cnt    = MIN(MAX_INODES, sectors >> 4);
-  block_ptr->block_cnt    = sectors;
-  block_ptr->inode_free_cnt = block_ptr->inode_cnt - 1;
-  block_ptr->block_free_cnt = block_ptr->block_cnt - 3;
-  block_ptr->inode_table_start  = INODE_TABLE_START;
-  block_ptr->data_table_start   = DATA_TABLE_START;
-  block_ptr->magic_end          = SUPERBLOCK_MAGIC_END;
-  memset(block_ptr->_unused, 0, sizeof(block_ptr->_unused));
-
-  // Write to disk
-  raw = (uint16_t*)buffer;
-  ata_write_sector(1, raw); // 1 - superblock
-  free(buffer); // Free block RAM
-  return SUCCESS;
-}
-
-static uint32_t create_inode_table(void) {
-  // Allocate buffer
-  void *buffer = malloc(BLOCK_SIZE);
-  if (buffer == NULL) return ENOMEM;
-  memset(buffer, 0, BLOCK_SIZE);
-
-  // Variables
-  uint16_t *raw = (uint16_t*)buffer;
-
-  // Create inode in buffer
-  inode_t *inode_ptr = (inode_t*)buffer;
-
-  // Write data
-  inode_ptr->inode_id = INODE_TABLE_START;
-  inode_ptr->size     = 0;
-  inode_ptr->type     = FS_FILE_DIR;
-  inode_ptr->addr_extend    = 0;
-  memset(inode_ptr->data_blocks, 0, sizeof(inode_ptr->data_blocks));
-  inode_ptr->data_blocks[0] = DATA_TABLE_START;
-
-  // Write to disk
-  ata_write_sector(INODE_TABLE_START, raw);
-  free(buffer);
-  return SUCCESS;
-}
-
-static uint32_t create_data_table(void) {
-  // Allocate buffer
-  void *buffer = malloc(BLOCK_SIZE);
-  if (buffer == NULL) return ENOMEM;
-  memset(buffer, 0, BLOCK_SIZE);
-
-  // Variables
-  uint16_t *raw = (uint16_t*)buffer;
-  dirent_t *dot;
-
-  // Write data
-  dot = (dirent_t*)buffer;
-  dot->inode  = INODE_TABLE_START;
-  dot->type   = FS_FILE_DIR;
-  dot->name_len = 1;
-  dot->rec_len  = 12; // Aligned
-  memcpy(dot->name, ".", 2);  // Copy name
-
-  // Next file
-  dot = (dirent_t*)((char*)dot + 12);
-  dot->inode  = INODE_TABLE_START;
-  dot->type   = FS_FILE_DIR;
-  dot->name_len = 2;
-  dot->rec_len  = BLOCK_SIZE - 12;  // Aligned
-  memcpy(dot->name, "..", 3);       // Copy name
-
-  // Write do disk
-  ata_write_sector(DATA_TABLE_START, raw);
-  free(buffer);
-  return SUCCESS;
-}
-
-uint32_t mkfs(void) {
-  uint32_t status;
- 
-  // Superblock
-  status = create_superblock();
-  if (status != SUCCESS) return status;
-
-  // First inode (inode table)
-  status = create_inode_table();
-  if (status != SUCCESS) return status;
-
-  // First inode data
-  status = create_data_table();
-  if (status != SUCCESS) return status;
-  return SUCCESS;
-}
-
-uint32_t mount(void) {
-  // Allocate buffer
-  void *buffer = malloc(BLOCK_SIZE);
-  if (buffer == NULL) return ENOMEM;
-
-  // Variables
-  uint16_t *raw = (uint16_t*)buffer;
-  uint32_t status;
-
-  // Identify
-  status = ata_identify_disk(raw);
-  if (status != SUCCESS) {
+  // Get disk size
+  if (ata_identify_disk(raw_16) != 0) {
     free(buffer);
-    return status;
+    return ENODEV;
+  }
+  sectors = ((uint32_t)raw_16[61] << 16) | (uint32_t)raw_16[60];
+
+  // == Fill buffer ==
+  block_ptr->magic_start = MAGIC_SUPER_START;
+  block_ptr->block_size  = SIZE_BLOCK;
+ 
+  block_ptr->block_count = sectors;
+  block_ptr->inodes_count = \
+    MIN(sectors >> 4, MAX_INODES_ON_DISK);
+
+  block_ptr->inode_table_start = SECTOR_INODE_TABLE;
+  block_ptr->data_table_start  = SECTOR_DATA_TABLE(block_ptr->inodes_count);
+
+  block_ptr->free_inodes = block_ptr->inodes_count - 1; // Root
+  block_ptr->free_blocks = \
+    block_ptr->block_count - block_ptr->data_table_start - 1;
+
+  memset(block_ptr->_padding, 0, sizeof(block_ptr->_padding));
+  block_ptr->magic_end = MAGIC_SUPER_END;
+
+  // Write buffer
+  ata_write_sector(SECTOR_SUPERBLOCK, raw_16);
+
+  free(buffer);
+  return SUCCESS;
+}
+
+static uint32_t mkfs_inode_table(void) {
+  // Allocate memory
+  void *buffer = malloc(SIZE_BLOCK);
+  if (buffer == NULL) return ENOMEM;
+
+  // Pointers
+  uint16_t *raw_16        = (uint16_t*)buffer;
+  inode_t *inode;
+
+  ata_read_sector(SECTOR_SUPERBLOCK, raw_16);
+  uint32_t data_table_start = ((superblock_t*)buffer)->data_table_start;
+
+  // Reset buffer
+  memset(buffer, 0, SIZE_BLOCK);
+
+  // Fill inode
+  inode = (inode_t*)buffer;
+  inode->id   = 0;
+  inode->size = 48; // Two aligned dirent_t with name length total of 5
+  inode->type = FS_FILE_DIR;
+  inode->data_blocks[0] = data_table_start;
+
+  ata_write_sector(SECTOR_INODE_TABLE, raw_16);
+
+  // Reset all inode table
+  uint32_t block = SECTOR_INODE_TABLE + 1;
+  memset(buffer, 0, SIZE_BLOCK);
+  do {
+    ata_write_sector(block, raw_16);
+    ++block;
+  } while (block < data_table_start);
+
+  free(buffer);
+  return SUCCESS;
+}
+
+static uint32_t mkfs_root_directory(void) {
+  // Allocate memory
+  void *buffer = malloc(SIZE_BLOCK);
+  if (buffer == NULL) return ENOMEM;
+
+  // Pointers
+  uint16_t *raw_16  = (uint16_t*)buffer;
+  dirent_t *dir     = (dirent_t*)buffer;
+
+  // Get data table start
+  ata_read_sector(SECTOR_SUPERBLOCK, raw_16);
+  uint32_t data_table_start = ((superblock_t*)buffer)->data_table_start;
+  memset(buffer, 0, SIZE_BLOCK);
+
+  // Create 2 root links: ".", ".."
+
+  // Dot
+  dir->rec_len  = 24; // Aligned
+  dir->inode_id = 0;
+  dir->name_len = 2;  // "."
+  dir->hash32   = 0;  // No hash now
+  dir->type     = FS_FILE_DIR;
+  memcpy(dir->name, ".", 2);
+  dir = (dirent_t*)((uint8_t*)dir + 24);
+
+  // Dot2
+  dir->rec_len  = 24; // Aligned
+  dir->inode_id = 0;
+  dir->name_len = 3;  // ".."
+  dir->type     = FS_FILE_DIR;
+  dir->hash32   = 0;  // No hash now
+  memcpy(dir->name, "..", 3);
+
+  // Write
+  ata_write_sector(data_table_start, raw_16);
+  free(buffer);
+  return SUCCESS;
+}
+
+
+// Global
+uint32_t fs_makefs(void) {
+  uint32_t status;
+
+  status = mkfs_superblock();
+  if (status != SUCCESS) return status;
+
+  status = mkfs_inode_table();
+  if (status != SUCCESS) return status;
+
+  status = mkfs_root_directory();
+  return status;
+}
+
+uint32_t fs_mountfs(void) {
+  // Allocate memory
+  void *buffer = malloc(SIZE_BLOCK);
+  if (buffer == NULL) return ENOMEM;
+
+  // Allocate mounted_sb
+  if (mounted_sb == NULL) {
+    mounted_sb = malloc(SIZE_BLOCK);
+    if (mounted_sb == NULL) {
+      free(buffer);
+      return ENOMEM;
+    }
   }
 
-  // Read superblock (1)
-  ata_read_sector(1, raw);
-
-  // Validate
+  // Pointers
+  uint16_t *raw_16        = (uint16_t*)buffer;
   superblock_t *block_ptr = (superblock_t*)buffer;
-  if (block_ptr->magic_start != SUPERBLOCK_MAGIC_START ||
-    block_ptr->magic_end != SUPERBLOCK_MAGIC_END) {
+
+  // Ensure disk exists
+  if (ata_identify_disk(raw_16) != 0) {
     free(buffer);
+    return ENODEV;
+  }
+
+  // Validate magics
+  ata_read_sector(SECTOR_SUPERBLOCK, raw_16);
+  if (block_ptr->magic_start != MAGIC_SUPER_START ||
+      block_ptr->magic_end != MAGIC_SUPER_END) {
+    free(buffer);
+    free(mounted_sb);
+    mounted_sb = NULL;
     return EINVAL;
   }
 
-  // Create mount buffer
-  if (superblock_mounted == NULL)
-    superblock_mounted = malloc(BLOCK_SIZE);
-  if (superblock_mounted == NULL) return ENOMEM;
+  // Copy superblock into ram
+  memcpy(mounted_sb, raw_16, SIZE_BLOCK);
 
-  // Copy superblock
-  memcpy(superblock_mounted, buffer, BLOCK_SIZE);
-  free(buffer);
   return SUCCESS;
 }
 
+uint32_t fs_makedir(const char *path);
 
-uint32_t create_inode(inode_t *src) {
-  void *buffer = malloc(BLOCK_SIZE);
-  if (buffer == NULL) return ENOMEM;
-  // no memset, will be erased with ata_read_sector
+uint32_t fs_makefile(const char *path);
 
-  // Ensure disk exists and mounted
-  if (superblock_mounted == NULL) return ENODEV;
-
-  // No free space
-  if (superblock_mounted->inode_free_cnt < 1)
-    return ENOSPC;
-
-  // Variables
-  uint8_t *raw8;
-  uint16_t *raw = (uint16_t*)buffer;
-  uint32_t block = INODE_TABLE_START;
-  inode_t *inode;
-
-  uint32_t inode_id;
-
-  // Block loop
-  do {
-    // Read sector
-    ata_read_sector(block, raw);
-
-    // Inode loop
-    raw8 = (uint8_t*)buffer;
-    do {
-      inode = (inode_t*)raw8;
-
-      // Free inode
-      if (inode->type == FS_FILE_UNDEF)
-        break;
- 
-      // Next inode
-      raw8 += INODE_SIZE;
-      ++inode_id;
-
-      // Ram8 is in block
-    } while (raw8 < (uint8_t*)buffer + BLOCK_SIZE);
-
-    // Found inode
-    if (inode->type == FS_FILE_UNDEF)
-      break;
-
-    // Next block
-    ++block;
-
-    // block is in inode table
-  } while (block < DATA_TABLE_START);
-
-  // No free space
-  if (inode->type != FS_FILE_UNDEF) {
-    free(buffer);
-    return ENOSPC;
-  }
-
-  // Copy inode into RAM
-  memcpy(inode, src, INODE_SIZE);
-  inode->inode_id = inode_id;
-
-  // Write disk
-  raw = (uint16_t*)buffer;
-  ata_write_sector(block, raw);
-
-  // Update free space
-  superblock_mounted->inode_free_cnt--;     // In RAM
-  ata_write_sector(1, (uint16_t*)superblock_mounted);  // On disk
-
-  free(buffer);
-  return SUCCESS;
-}
 
 

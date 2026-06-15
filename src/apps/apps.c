@@ -10,8 +10,12 @@
 #include "kernel/fs/fs.h"
 #include "drivers/ata/ata.h"
 
-extern superblock_t *superblock_mounted;
+extern superblock_t *mounted_sb;
 
+const char * const shell_hello_message = (
+  "This is KittenShell\n"
+  "Type 'help' to view available commands"
+);
 const char prompt[] = "($status) => ";
 #define PROMPT_LEN (sizeof(prompt))
 
@@ -110,15 +114,15 @@ static uint32_t app_free(char *args) {
 }
 
 static uint32_t app_ls(char *args) {
-  if (superblock_mounted == NULL) {
+  if (mounted_sb == NULL) {
     puts("No mounted disk");
     return ENODEV;
   }
 
   // Allocate buffer
-  void *buffer = malloc(BLOCK_SIZE);
+  void *buffer = malloc(SIZE_BLOCK);
   if (buffer == NULL) return ENOMEM;
-  memset(buffer, 0, BLOCK_SIZE);
+  memset(buffer, 0, SIZE_BLOCK);
 
   // Allocate inode
   inode_t *inode = malloc(sizeof(inode_t));
@@ -134,10 +138,10 @@ static uint32_t app_ls(char *args) {
   dirent_t *file;
 
   // Read
-  ata_read_sector(INODE_TABLE_START, raw);
+  ata_read_sector(SECTOR_INODE_TABLE, raw);
   memcpy(inode, buffer, sizeof(inode_t));
 
-  printf("DEBUG: id=%d, size=%d, type=%d\n", inode->inode_id, inode->size, inode->type);
+  printf("DEBUG: id=%d, size=%d, type=%d\n", inode->id, inode->size, inode->type);
 
   if (inode->type != FS_FILE_DIR) {
     free(buffer);
@@ -148,7 +152,7 @@ static uint32_t app_ls(char *args) {
   puts("/");  // Root
 
   // Check all data segments  TODO: extendable segment
-  for (uint32_t i=0; i<DATA_CNT; ++i) {
+  for (uint32_t i=0; i<DATA_BLOCK_CNT; ++i) {
     if (inode->data_blocks[i] == 0) break;
     ata_read_sector(inode->data_blocks[i], raw);
 
@@ -166,7 +170,7 @@ static uint32_t app_ls(char *args) {
       file = (dirent_t*)rawdata;
 
       // While rawdata is inside one block
-    } while ((uint32_t)file < (uint32_t)((uint8_t*)buffer + BLOCK_SIZE));
+    } while ((uint32_t)file < (uint32_t)((uint8_t*)buffer + SIZE_BLOCK));
   }
 
   // Free RAM
@@ -176,21 +180,21 @@ static uint32_t app_ls(char *args) {
 }
 
 static uint32_t app_mkfs(char *args) {
-  uint32_t status = mkfs();
+  uint32_t status = fs_makefs();
   if (status != 0)
     printf("Failed to make fs: %d\n", status);
   return status;
 }
 
 static uint32_t app_mnt(char *args) {
-  uint32_t status = mount();
+  uint32_t status = fs_mountfs();
   if (status != 0)
     printf("Failed to mount: %d\n", status);
   return status;
 }
 
 static uint32_t app_touch(char *args) {
-  if (args == NULL) return EINVAL;
+  /*if (args == NULL) return EINVAL;
 
   inode_t *src = malloc(sizeof(inode_t));
   if (src == NULL) return ENOMEM;
@@ -201,14 +205,18 @@ static uint32_t app_touch(char *args) {
   src->size = 1024;
   src->type = FS_FILE_FILE;
   src->data_blocks[0] = DATA_TABLE_START;
-  uint32_t status = create_inode(src);
-  if (status != 0)
-    printf("Failed to create inode %d\n", status);
 
-  return status;
+  uint32_t inode_id = create_inode(src);
+  if (inode_id == 0)
+    puts("Failed to create inode");
+
+  return inode_id;*/
+  return 0xFF;
 }
 
 uint32_t app_shell(char *args) {
+  puts(shell_hello_message);
+
   uint32_t status = 0;
   char itoa_b[12];
   char *buffer;

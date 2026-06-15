@@ -41,16 +41,17 @@ uint32_t kmain(mboot_info *mbi) {
   uint32_t status;
   init_system(mbi);
 
-  printf("Size of superblock... %d\n", sizeof(superblock_t));
-  printf("Size of inode... %d\n", sizeof(inode_t));
+  puts("Trying to mount disk...");
+  status = fs_mountfs();
 
-  status = mount();
-  while (status != 0) {
-    printf("(%d) Trying again...\n", status);
-    mkfs();
-    status = mount();
+  uint8_t tries = 0;
+  while (status != 0 && tries < 8) {
+    printf("Error code %d, retrying... %d\n", status, tries);
+    fs_makefs();
+    status = fs_mountfs();
+    ++tries;
   }
-  puts("Mounted successfully");
+  puts("Mounted successfully\n");
 
   app_t *shell_app = &app_table[0];
   shell_app->func(NULL);
