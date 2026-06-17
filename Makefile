@@ -14,7 +14,7 @@ SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
 # Custom includes
-INCLUDE_INC = -isystem ./include
+INCLUDE_INC = -isystem ./include -isystem ./drivers
 
 # Sources
 SSOURCES = $(shell find src -name '*.s')
@@ -61,7 +61,7 @@ $(TARGET): $(OBJECTS)
 
 clean:
 	@echo "-- Cleaning up"
-	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET) $(ISOFILE) $(DISKIMG)
+	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET) $(ISOFILE)
 
 $(BUILD):
 	@echo "-- Creating directories"

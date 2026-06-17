@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+void k_mem_init(size_t max);
+
 int atoi(const char *nptr);
 int abs(int j);
 
