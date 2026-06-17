@@ -111,7 +111,53 @@ void free(void *ptr) {
   }
 }
 
-void *calloc(size_t nmemb, size_t size);
+void *calloc(size_t nmemb, size_t size) {
+  void *buffer = malloc(nmemb * size);
+  if (buffer != NULL) {
+    memset(buffer, 0, nmemb * size);
+  }
+  return buffer;
+}
 
-void *realloc(void *ptr, size_t size);
+void *realloc(void *ptr, size_t size) {
+  if (ptr == NULL) {
+    return malloc(size);
+  } else if (size == 0) {
+    free(ptr);
+    return NULL;
+  }
+
+  mem_block_t *block = (mem_block_t*)((uint8_t*)ptr - META_SIZE);
+  if (block <= _heap_start) return NULL;
+
+  if (block->size >= size + (META_SIZE + BLOCK_MIN_SIZE)) {
+    mem_block_t *new = \
+      (mem_block_t*)((uint8_t*)ptr + size);
+
+    /* Create new block */
+    new->magic = BLOCK_MAGIC;
+    new->size = (block->size - size) - META_SIZE;
+    new->prev = block;
+    new->next = block->next;
+    new->is_free = 1;
+
+    if (block->next != NULL) {
+      block->next->prev = new;
+    }
+    block->next = new;
+
+    block->size = size;
+    return ptr;
+  }
+
+  void *newptr = malloc(size);
+  if (newptr == 0) {
+    free(ptr);
+    return NULL;
+  }
+
+  memcpy(newptr, ptr, block->size);
+  free(ptr);
+  return newptr;
+}
 
