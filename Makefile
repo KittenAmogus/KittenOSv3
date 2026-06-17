@@ -14,7 +14,7 @@ SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
 # Custom includes
-INCLUDE_INC = -isystem ./src/include -I./src
+INCLUDE_INC = -isystem ./include
 
 # Sources
 SSOURCES = $(shell find src -name '*.s')
@@ -26,21 +26,17 @@ COBJECTS = $(patsubst src/%.c,$(BUILD)/%.c.o,$(CSOURCES))
 OBJECTS = $(SOBJECTS) $(COBJECTS)
 
 # Link config
-LDFILE = src/link.ld
+LDFILE = ./link.ld
 
 # Target
-TARGET = kernel.elf
+TARGET = ./build/kernel.elf
 
 # ISO
-ISODIR    = iso
-ISOFILE   = os.iso
+ISODIR    = ./build/iso
+ISOFILE   = ./build/os.iso
 GRUBFILES = grub/grub.cfg
 
 DISKIMG = ./hda.img
-
-# BOCHS
-BOCHS = bochs
-BFLAGS = -f ./bochsrc.txt -q
 
 # QEMU
 QEMU = qemu-system-i386
@@ -65,7 +61,7 @@ $(TARGET): $(OBJECTS)
 
 clean:
 	@echo "-- Cleaning up"
-	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET) $(ISOFILE)
+	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET) $(ISOFILE) $(DISKIMG)
 
 $(BUILD):
 	@echo "-- Creating directories"
