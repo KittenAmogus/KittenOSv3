@@ -97,6 +97,6 @@ FILE *fopen(const char *pathname, const char *mode) {
 }
 
 void fclose(FILE *stream) {
-  return NULL;
+  return;
 }
 

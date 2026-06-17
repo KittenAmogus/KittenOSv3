@@ -36,5 +36,7 @@ typedef struct {
   } framebuffer;
 } multiboot_data_t;
 
+extern uint8_t _kernel_end;
+
 #endif // _STDDEF_H
 

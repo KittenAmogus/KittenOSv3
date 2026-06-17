@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #define BLOCK_MIN_SIZE  4
 #define BLOCK_MAGIC     0xABCDEF01
@@ -26,8 +27,8 @@ static mem_block_t *_first_block  = NULL;
 
 void k_mem_init(size_t max) {
   // Create heap
-  _heap_start = _kernel_end;
-  _heap_max = max;
+  _heap_start = &_kernel_end;
+  _heap_max = (uint8_t*)max;
 
   // Create first block
   _first_block = (mem_block_t*)_heap_start;
@@ -77,7 +78,7 @@ void *malloc(size_t size) {
 }
 
 void free(void *ptr) {
-  if (ptr < _heap_start + META_SIZE || ptr == NULL || ptr >= _heap_max)
+  if ((uint32_t)ptr < (uint32_t)_heap_start + META_SIZE || ptr == NULL || (uint32_t)ptr >= (uint32_t)_heap_max)
     return;
 
   mem_block_t *block = (mem_block_t*)((uint8_t*)ptr - META_SIZE);
@@ -128,7 +129,7 @@ void *realloc(void *ptr, size_t size) {
   }
 
   mem_block_t *block = (mem_block_t*)((uint8_t*)ptr - META_SIZE);
-  if (block <= _heap_start) return NULL;
+  if ((uint32_t)block <= (uint32_t)_heap_start) return NULL;
 
   if (block->size >= size + (META_SIZE + BLOCK_MIN_SIZE)) {
     mem_block_t *new = \
