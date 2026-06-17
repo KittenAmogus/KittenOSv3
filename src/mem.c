@@ -59,6 +59,7 @@ void *malloc(size_t size) {
         new->size = (block->size - META_SIZE - size);
         new->prev = block;
         new->next = block->next;
+        new->is_free = 1;
 
         // Resize old block
         block->next = new;

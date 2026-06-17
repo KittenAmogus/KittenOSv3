@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 #define MAX_DESCRIPTORS 16
-#define STDIO   0
+#define STDIN   0
 #define STDOUT  1
 #define STDERR  2
 

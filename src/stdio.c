@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <vga.h>
+
 uint32_t errno = 0;
 
 FILE *_file_descriptors[MAX_DESCRIPTORS];
@@ -9,10 +11,30 @@ FILE *stdin   = NULL;
 FILE *stdout  = NULL;
 FILE *stderr  = NULL;
 
-void k_stdio_init(void) {
+void OLD_k_stdio_init(void) {
   stdin  = _file_descriptors[0];
   stdout = _file_descriptors[1];
   stderr = _file_descriptors[2];
+}
+void k_stdio_init(void) {
+  // 1. Сама функция stdio выделяет память в куче под дескриптор stdin
+  stdin = malloc(sizeof(FILE));
+  
+  // 2. Явно синхронизируем: кладем этот адрес в массив дескрипторов
+  _file_descriptors[0] = stdin;
+
+  // 3. Настраиваем поля буфера клавиатуры напрямую
+  stdin->fd = 0;
+  stdin->flags = 0;
+  stdin->buffer = malloc(128);
+  stdin->buffer_size = 128;
+  stdin->buffer_pos = 0;
+  stdin->read = NULL;
+  stdin->write = NULL;
+
+  // 4. Привязываем stdout к готовому VGA драйверу
+  _file_descriptors[1] = &vga_descriptor;
+  stdout = _file_descriptors[1];
 }
 
 int putchar(int c) {
@@ -35,20 +57,17 @@ int printf(const char *format, ...) {
   return -1;
 }
 
-int getchar(void) {
-  if (stdin == NULL) return -1;
+static size_t stdin_read_ptr = 0;
 
-  if (stdin->buffer != NULL) {
-    if (stdin->buffer_pos < stdin->buffer_size) {
-      return (int)stdin->buffer[stdin->buffer_pos++];
-    }
-    stdin->buffer_pos = 0;
-    stdin->buffer_size = 0;
+int getchar(void) {
+  if (stdin == NULL || stdin->buffer == NULL) return -1;
+
+  if (stdin_read_ptr < stdin->buffer_pos) {
+    int ch = (int)stdin->buffer[stdin_read_ptr++];
+    return ch;
   }
 
-  char ch;
-  if (stdin->read(0, &ch, 1) != 1) return -1;
-  return (int)ch;
+  return -1;
 }
 
 int getline(char **lineptr, size_t *n, FILE *stream) {
