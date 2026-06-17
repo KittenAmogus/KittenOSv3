@@ -5,7 +5,7 @@ LD  = ld
 
 # Flags
 SFLAGS  = -f elf32
-CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra -Wno-unused-parameter
+CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra -Wno-unused-parameter -Isrc
 LDFLAGS = -melf_i386
 
 # Directories
@@ -59,11 +59,11 @@ $(BUILD)/%.s.o: src/%.s | $(BUILD)
 
 $(BUILD)/%.c.o: src/%.c | $(BUILD)
 	@echo "-- Compiling $< -> $@"
-	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC) -Isrc
+	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC)
 
 $(TARGET): $(OBJECTS)
 	@echo "-- Linking $@"
-	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC) -Isrc
+	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC)
 
 clean:
 	@echo "-- Cleaning up"
@@ -80,9 +80,6 @@ iso: $(TARGET)
 	@cp $(GRUBFILES) $(ISODIR)/boot/grub/
 	@echo "-- Burning ISO file"
 	@grub-mkrescue -o $(ISOFILE) $(ISODIR)
-
-bochs:
-	$(BOCHS) $(BFLAGS)
 
 qemu:
 	$(QEMU) $(QFLAGS)
