@@ -1,7 +1,11 @@
-#ifndef KERNEL_H
-#define KERNEL_H
+#ifndef _STDDEF_H
+#define _STDDEF_H
 
 #include <stdint.h>
+
+#define NULL  ((void*)0)
+
+typedef unsigned int  size_t;
 
 typedef struct {
   uint32_t flags;
@@ -32,7 +36,5 @@ typedef struct {
   } framebuffer;
 } multiboot_data_t;
 
-int kmain(multiboot_data_t *mbi);
-
-#endif // KERNEL_H
+#endif // _STDDEF_H
 
