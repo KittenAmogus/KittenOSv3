@@ -5,7 +5,7 @@ LD  = ld
 
 # Flags
 SFLAGS  = -f elf32
-CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra -Wno-unused-parameter -Isrc
+CFLAGS  = -m32 -nostdlib -nostdinc -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Wextra
 LDFLAGS = -melf_i386
 
 # Directories
@@ -14,9 +14,7 @@ SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
 # Custom includes
-LIBS_DIR  = src/libs
-LIBS = $(shell find $(LIBS_DIR) -mindepth 1 -type d)
-LIBS_INC = $(patsubst %,-I%,$(LIBS))
+INCLUDE_INC = -isystem ./src/include -I./src
 
 # Sources
 SSOURCES = $(shell find src -name '*.s')
@@ -59,15 +57,15 @@ $(BUILD)/%.s.o: src/%.s | $(BUILD)
 
 $(BUILD)/%.c.o: src/%.c | $(BUILD)
 	@echo "-- Compiling $< -> $@"
-	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS_INC)
+	$(CC) $(CFLAGS) -c $< -o $@ $(INCLUDE_INC)
 
 $(TARGET): $(OBJECTS)
 	@echo "-- Linking $@"
-	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS) $(LIBS_INC)
+	$(LD) $(LDFLAGS) -T $(LDFILE) -o $(TARGET) $(OBJECTS)
 
 clean:
 	@echo "-- Cleaning up"
-	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET)
+	@rm -rf $(BLD_INNER) $(BUILD) $(ISODIR) $(TARGET) $(ISOFILE)
 
 $(BUILD):
 	@echo "-- Creating directories"
