@@ -286,7 +286,7 @@ app_t app_table[] = {
   {"ls",      "Prints all files in current dir (now only root)", app_ls},
   {"mount",   "Mounts disk (formated in KittenFS)", app_mnt},
   {"mkfs",    "Format disk in KittenFS", app_mkfs},
-  {"touch",   "Creates inode (and link later)", app_touch},
+  {"_touch",   "[DISABLED] Creates inode (and link later)", app_touch},
 };
 const uint32_t app_count = sizeof(app_table) / sizeof(app_t);
 

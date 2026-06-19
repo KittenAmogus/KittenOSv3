@@ -9,6 +9,7 @@ const char * const _hello_message = (
   "This is operating system, written with C and NASM, using\n"
   "- The little book about OsDev\n"
   "By @kittenamogus\n" "With help from Google AI\n"
+  "No, not vibecoded, it was help with (GDT,IDT,PIC) and architecture\n"
 );
 
 // Multiboot data
