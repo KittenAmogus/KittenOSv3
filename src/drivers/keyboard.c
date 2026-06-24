@@ -1,6 +1,9 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <io.h>
+
+#define KB_MAX_BUFFER 1024
 
 static const char kbd_us_normal[128] = {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
@@ -19,6 +22,52 @@ static const char kbd_us_shift[58] = {
 };
 
 static uint8_t is_shift_pressed = 0;
+
+FILE _kb_descriptor;
+static size_t _kb_read_pos = 0;
+
+static int _kb_private_write(int fd, const void *buf, size_t count) {
+  if (_kb_descriptor.buffer == NULL || buf == NULL) return -1;
+  const char *src = (const char*)buf;
+
+  while (count > 0) {
+    char ch = *src;
+
+    if (ch == '\b') {
+      if (_kb_descriptor.buffer_pos > _kb_read_pos) {
+        _kb_descriptor.buffer_pos--;
+      }
+      --count; ++src; continue;
+    }
+
+    if (_kb_descriptor.buffer_pos < _kb_descriptor.buffer_size) {
+      _kb_descriptor.buffer[_kb_descriptor.buffer_pos++] = ch;
+    }
+
+    --count; ++src;
+  }
+  return 0;
+}
+
+static int _kb_read(int fd, void *buf, size_t count) {
+  if (fd != _kb_descriptor.fd || buf == NULL) return -1;
+  char *dest = (char*)buf;
+  size_t read_bytes = 0;
+
+  while (count > 0 && (_kb_read_pos < _kb_descriptor.buffer_pos)) {
+    *dest = _kb_descriptor.buffer[_kb_read_pos++];
+    --count;
+    ++read_bytes;
+    ++dest;
+  }
+
+  if (_kb_read_pos == _kb_descriptor.buffer_pos) {
+    _kb_descriptor.buffer_pos = 0;
+    _kb_read_pos = 0;
+  }
+
+  return read_bytes;
+}
 
 
 void keyboard_handler(void) {
@@ -45,23 +94,32 @@ void keyboard_handler(void) {
 
   char ascii = (is_shift_pressed ? kbd_us_shift : kbd_us_normal)[scancode];
 
+  // Fill stdin
   if (ascii != 0) {
-    // Fill stdin
-    if (stdin != NULL && stdin->buffer != NULL) {
-      if (ascii == '\b') {
-        if (stdin->buffer_pos != 0)
-          stdin->buffer_pos--;
-      }
-      if (stdin->buffer_pos < stdin->buffer_size) {
-        stdout->write(1, &ascii, 1);
-        if (ascii != '\b')
-          stdin->buffer[stdin->buffer_pos++] = ascii;
-      }
-    }
+    _kb_private_write(_kb_descriptor.fd, &ascii, 1);
   }
 }
 
-void kb_init(void) {
-  inb(0x60);
+
+static int _kb_write(int fd, const void *buf, size_t count) {
+  return -1;
+}
+
+FILE *kb_init(int fd) {
+  _kb_descriptor.fd = fd;
+  _kb_descriptor.write  = _kb_write;
+  _kb_descriptor.read   = _kb_read;
+  _kb_descriptor.buffer = malloc(KB_MAX_BUFFER);
+
+  if (_kb_descriptor.buffer != NULL)
+    _kb_descriptor.buffer_size  = KB_MAX_BUFFER;
+  else
+    _kb_descriptor.buffer_size  = 0;
+
+  _kb_descriptor.buffer_pos = 0;
+
+  // Set file descriptor
+  _file_descriptors[fd] = &_kb_descriptor;
+  return &_kb_descriptor;
 }
 

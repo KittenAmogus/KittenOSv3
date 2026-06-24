@@ -10,66 +10,71 @@
 
 #include <keyboard.h>
 
-
 extern void keyboard_handler(void);
 
-int kmain(multiboot_data_t *mbi) {
+
+static const char * const _HELLO_MSG = (
+  "Hello, user of KittenOS!\n");
+
+
+static void _init_kernel(multiboot_data_t *mbi) {
   gdt_init();
   idt_init();
 
-  k_mem_init(mbi->mem_upper); // Heap
-
-  // Vga IO
-  vga_init(1);
-  vga_clear();
-
-  // Stdin
-  /*stdin = malloc(sizeof(FILE));
-  _file_descriptors[0] = stdin;
-  if (_file_descriptors[0] != stdin) puts("WTF");
-
-  stdin->fd = 0;
-  stdin->flags = 0;
-  stdin->buffer = malloc(128);
-  if (stdin->buffer == NULL) puts("0Even init is null");
-  stdin->buffer_size = 128;
-  stdin->buffer_pos = 0;*/
-
-  // Init stdio (stdout = vga)
+  uint32_t max_ram_bytes = 1024 * 1024 + (mbi->mem_upper * 1024);
+  k_mem_init(max_ram_bytes);
   k_stdio_init();
-  if (_file_descriptors[0] != stdin) puts("WTF2");
-  if (stdin == NULL) puts("1Even init is null");
-  kb_init();
-  if (stdin == NULL) puts("2Even init is null");
+}
 
-  puts("Hello, user!");
-  puts("This message has been");
-  puts("Writed to VGA buffer via");
-  puts("FD 1 (stdout)");
 
-  char *line = NULL;
-  size_t n = 0;
+int kmain(multiboot_data_t *mbi) {
+  _init_kernel(mbi);
+
+  if (malloc(128) == NULL) {
+    return 2;
+  }
+
+  /* Creating VGA stdout */
+  stdout = vga_init(STDOUT);
+
+  vga_clear();
+  puts(_HELLO_MSG);
+
+  /* Creating keyboard stdin */
+  stdin = kb_init(STDIN);
+  if (stdin->buffer == NULL) {
+    stdin->buffer = malloc(1024);
+  }
+
+  if (malloc(128) == NULL) {
+    puts("Random malloc is null");
+  }
 
   if (stdin == NULL) {
-    puts("NULL Stdin");
-  }
-  if (stdin->buffer == NULL) {
-    puts("NULL Buffer");
+    puts("STDIN is null");
+    return 1;
+  } else if (stdin->buffer == NULL) {
+    puts("STDIN buffer is null");
+    return 2;
   }
 
-  vga_clear(); // Очищаем старый мусор VGA
-  puts("FUCK YES!");
+  int ch;
+
+  puts("Start typing...");
   while (1) {
-    // puts("=> ");
-    getline(&line, &n, stdin);
-
-    // if (getline(&line, &n, stdin) < 0) break;
-    if (line != NULL) {
-      puts(line);
+    ch = getchar();
+    if (ch != -1) {
+      if (ch == '\b') {
+        putchar('<');
+      }
+      else
+        putchar((char)ch);
+    } else {
+      putchar((int)'X');
     }
   }
 
-  puts("\n!! Infinity halt mode now !!\n");
+  puts("\n[INFO] Kernel is now in idle mode\n");
   while (1) {
     __asm__ volatile ("hlt");
   }

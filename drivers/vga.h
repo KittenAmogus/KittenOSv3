@@ -13,7 +13,7 @@
 extern FILE vga_descriptor;
 
 void vga_clear(void);
-void vga_init(int fd);
+FILE *vga_init(int fd);
 
 #endif // VGA_H
 

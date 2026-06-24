@@ -27,6 +27,8 @@ void vga_clear(void) {
   for (uint16_t i=0; i<=VGA_MAXPOS; ++i) {
     _vga_fb[i] = c;
   }
+  _cursorY = 0;
+  _cursorX = 0;
 }
 
 static int _vga_write(int fd, const void *buf, size_t count) {
@@ -96,7 +98,7 @@ static int _vga_read(int fd, void *buf, size_t count) {
 }
 
 
-void vga_init(int fd) {
+FILE *vga_init(int fd) {
   vga_descriptor.fd = fd;
   vga_descriptor.write  = _vga_write;
   vga_descriptor.read   = _vga_read;
@@ -104,5 +106,6 @@ void vga_init(int fd) {
 
   // Set file descriptor
   _file_descriptors[fd] = &vga_descriptor;
+  return &vga_descriptor;
 }
 

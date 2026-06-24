@@ -11,19 +11,11 @@ FILE *stdin   = NULL;
 FILE *stdout  = NULL;
 FILE *stderr  = NULL;
 
-void OLD_k_stdio_init(void) {
-  stdin  = _file_descriptors[0];
-  stdout = _file_descriptors[1];
-  stderr = _file_descriptors[2];
-}
 void k_stdio_init(void) {
-  // 1. Сама функция stdio выделяет память в куче под дескриптор stdin
   stdin = malloc(sizeof(FILE));
-  
-  // 2. Явно синхронизируем: кладем этот адрес в массив дескрипторов
+ 
   _file_descriptors[0] = stdin;
 
-  // 3. Настраиваем поля буфера клавиатуры напрямую
   stdin->fd = 0;
   stdin->flags = 0;
   stdin->buffer = malloc(128);
@@ -32,7 +24,6 @@ void k_stdio_init(void) {
   stdin->read = NULL;
   stdin->write = NULL;
 
-  // 4. Привязываем stdout к готовому VGA драйверу
   _file_descriptors[1] = &vga_descriptor;
   stdout = _file_descriptors[1];
 }

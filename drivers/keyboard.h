@@ -2,8 +2,9 @@
 #define _KEYBOARD_H
 
 #include <stdint.h>
+#include <stdio.h>
 
-void kb_init(void);
+FILE *kb_init(int fd);
 
 #endif // _KEYBOARD_H
 
