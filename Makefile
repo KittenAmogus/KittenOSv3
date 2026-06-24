@@ -14,7 +14,7 @@ SRC_INNER = $(shell find src -mindepth 1 -type d)
 BLD_INNER = $(patsubst src/%,build/%,$(SRC_INNER))
 
 # Custom includes
-INCLUDE_INC = -isystem ./include -isystem ./drivers
+INCLUDE_INC = -isystem ./include -isystem ./include/standart
 
 # Sources
 SSOURCES = $(shell find src -name '*.s')
