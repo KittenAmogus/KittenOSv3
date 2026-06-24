@@ -79,5 +79,6 @@ qemu:
 	$(QEMU) $(QFLAGS)
 
 hda:
+	@echo "-- Creating HDA from /dev/urandom"
 	@dd if=/dev/urandom of=$(DISKIMG) bs=1M count=32
 
