@@ -22,4 +22,6 @@ void pic_remap(void) {
   // 0xFD = 0b11111101
   outb(PIC1_DATA, 0xFD); // Enable (1 << 1)
   outb(PIC2_DATA, 0xFF); // Disable everything
+
+  asm volatile("sti");
 }

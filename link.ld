@@ -21,5 +21,6 @@ SECTIONS {
   }
 
   _kernel_end = .;
+  _heap_start = 16M;
 }
 
