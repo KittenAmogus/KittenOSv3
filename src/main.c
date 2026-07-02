@@ -9,6 +9,10 @@
 #include <drivers/pic.h>
 #include <drivers/vga.h>
 
+#include <drivers/disk.h>
+#include <drivers/fs/fat.h>
+#include <drivers/ramdisk.h>
+
 #include <builtin/apps.h>
 #include <builtin/shell.h>
 
@@ -55,16 +59,28 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   if (err != SUCCESS)
     return err;
 
+  /* Reg drivers */
+  vfs_register_driver(&fat_driver);
+
   /* Prepare VGA */
   vga_clear();
   puts("Hello, user!");
   puts(" * KittenOSv4");
 
   /* Run shell */
+  const char *path;
+  path = (const char *)rd_createdev(128 << 10);
+  printf("MAKEFS: %x\n", vfs_makefs(path));
+  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
+  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
+  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
+  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
+  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
+  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
+
   err = shell_app_func(0, NULL);
   if (err != SUCCESS)
     return err;
-
   /* Exit code */
   return SUCCESS;
 }
