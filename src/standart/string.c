@@ -52,6 +52,9 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     --n;
   }
 
+  if (*c1 == 0 || *c2 == 0)
+    return 0;
+
   if (*c1 != *c2) {
     return (int)*c1 - (int)*c2;
   }

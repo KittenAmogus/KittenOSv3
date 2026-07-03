@@ -68,18 +68,27 @@ typedef struct vfs_mount {
   void *fs_instance;
 } vfs_mount_t;
 
+typedef struct {
+  char *devpath;
+  blk_dev_t *dev;
+} vfs_dev_t;
+
 extern vfs_mount_t *mounted_devices[];
 extern int mounted_devices_pos;
 
 char *vfs_next_subd(char *path);
 int vfs_register_driver(fs_driver_t *driver);
+int vfs_register_device(blk_dev_t *device, const char *devname);
 
-void *vfs_opendir(blk_dev_t *dev, const char *path);
+void *vfs_opendir(const char *path);
 int vfs_readdir(void *handle, dirent_t *dirent);
 void vfs_closedir(void *handle);
 
-int vfs_makefs(const char *path);
-int vfs_mountfs(const char *path, const char *mountpoint);
+int vfs_makefs(const char *path, const char *driver);
+int vfs_mountfs(const char *path, const char *mountpoint, const char *driver);
 int vfs_umountfs(const char *path, const char *mountpoint);
+
+int vfs_creat(const char *path);
+int vfs_mkdir(const char *path);
 
 #endif // _DISK_H

@@ -16,6 +16,15 @@
 #include <builtin/apps.h>
 #include <builtin/shell.h>
 
+#define ASSERT(exp, err_code, lbl)                                             \
+  do {                                                                         \
+    if (!(exp)) {                                                              \
+      err = (err_code);                                                        \
+      err_msg = #exp;                                                          \
+      goto lbl;                                                                \
+    }                                                                          \
+  } while (0)
+
 extern FILE *_file_descriptors[];
 
 static int _init_stdin(void) {
@@ -71,32 +80,33 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
    *        MAIN KERNEL CODE
    * =============================== */
 
-  char *err_msg = "Success";
+  char *err_msg;
   err = 0;
-
-#define ASSERT(exp, err_code, lbl)                                             \
-  do {                                                                         \
-    if (!(exp)) {                                                              \
-      err = (err_code);                                                        \
-      err_msg = #exp;                                                          \
-      goto lbl;                                                                \
-    }                                                                          \
-  } while (0)
 
   vga_clear();
   puts("Running FAT32 tests...\n");
 
+  puts("Creating ramdisk");
   blk_dev_t *ramdisk = rd_createdev(128 << 10);
   ASSERT(ramdisk != NULL, ENOMEM, kernel_panic);
 
+  puts("Registering ramdisk");
+  ASSERT(vfs_register_device(ramdisk, "ram0") == 0, ENODEV, kernel_panic);
+
   puts("Making filesystem");
-  ASSERT(vfs_makefs((const char *)ramdisk) == 0, EIO, kernel_panic);
+  err = vfs_makefs("/dev/ram0", "fat");
+  ASSERT(err == 0, err, kernel_panic);
 
   puts("Mounting filesystem");
-  ASSERT(vfs_mountfs((const char *)ramdisk, "/") == 0, EINVAL, kernel_panic);
+  err = vfs_mountfs("/dev/ram0", "/", "fat");
+  ASSERT(err == 0, err, kernel_panic);
+
+  puts("Opening directory /root/test");
+  void *handle = vfs_opendir("/root/test");
+  ASSERT(handle != NULL, ENOENT, kernel_panic);
 
   puts("Opening directory /");
-  void *handle = vfs_opendir(ramdisk, "/");
+  handle = vfs_opendir("/");
   ASSERT(handle != NULL, ENOENT, kernel_panic);
 
   puts("Allocating dirent_t *dirent");
@@ -122,7 +132,7 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   puts("Reading done");
 
   puts("Unmounting /");
-  ASSERT(vfs_umountfs((const char *)NULL, "/") == 0, EINVAL, kernel_panic);
+  ASSERT(vfs_umountfs("/dev/ram0", "/") == 0, EINVAL, kernel_panic);
 
   puts("Freeing");
   free(handle);
