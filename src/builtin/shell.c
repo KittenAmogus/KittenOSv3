@@ -100,6 +100,12 @@ int shell_app_func(int argc, char **argv) {
     }
 
     if (*argv[0] != 0) {
+      if (strcmp(argv[0], "exit") == 0) {
+        puts("Exiting shell");
+        status = 0;
+        break;
+      }
+
       app_t app;
       int found = 0;
       for (size_t i = 0; i < app_table_size; ++i) {

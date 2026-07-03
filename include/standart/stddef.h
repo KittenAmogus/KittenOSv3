@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#define EOF -1
 #define NULL ((void *)0)
 typedef unsigned int size_t;
 extern void *_kernel_end;

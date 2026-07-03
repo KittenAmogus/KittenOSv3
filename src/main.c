@@ -67,20 +67,72 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   puts("Hello, user!");
   puts(" * KittenOSv4");
 
-  /* Run shell */
-  const char *path;
-  path = (const char *)rd_createdev(128 << 10);
-  printf("MAKEFS: %x\n", vfs_makefs(path));
-  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
-  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
-  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
-  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
-  printf("MOUNTFS: %x\n", vfs_mountfs(path, "/mnt"));
-  printf("UMOUNTFS: %x\n", vfs_umountfs(0, "/mnt"));
+  /* ===============================
+   *        MAIN KERNEL CODE
+   * =============================== */
 
-  err = shell_app_func(0, NULL);
-  if (err != SUCCESS)
-    return err;
-  /* Exit code */
+  char *err_msg = "Success";
+  err = 0;
+
+#define ASSERT(exp, err_code, lbl)                                             \
+  do {                                                                         \
+    if (!(exp)) {                                                              \
+      err = (err_code);                                                        \
+      err_msg = #exp;                                                          \
+      goto lbl;                                                                \
+    }                                                                          \
+  } while (0)
+
+  vga_clear();
+  puts("Running FAT32 tests...\n");
+
+  blk_dev_t *ramdisk = rd_createdev(128 << 10);
+  ASSERT(ramdisk != NULL, ENOMEM, kernel_panic);
+
+  puts("Making filesystem");
+  ASSERT(vfs_makefs((const char *)ramdisk) == 0, EIO, kernel_panic);
+
+  puts("Mounting filesystem");
+  ASSERT(vfs_mountfs((const char *)ramdisk, "/") == 0, EINVAL, kernel_panic);
+
+  puts("Opening directory /");
+  void *handle = vfs_opendir(ramdisk, "/");
+  ASSERT(handle != NULL, ENOENT, kernel_panic);
+
+  puts("Allocating dirent_t *dirent");
+  dirent_t *dirent = malloc(sizeof(dirent_t));
+  ASSERT(dirent != NULL, ENOMEM, kernel_panic);
+
+  puts("Reading directory /:");
+  puts("/");
+
+  int errcode = 0;
+  while (errcode > -1) {
+    errcode = vfs_readdir(handle, dirent);
+    ASSERT(errcode > -2, EIO, kernel_panic);
+
+    if (errcode != EOF) {
+      printf("|- [%s] (%d) '%s'\n",
+             (dirent->type == DIRENT_UNKNOWN
+                  ? "----"
+                  : (dirent->type == DIRENT_FILE ? "FILE" : "DIR ")),
+             dirent->size, dirent->name);
+    }
+  }
+  puts("Reading done");
+
+  puts("Unmounting /");
+  ASSERT(vfs_umountfs((const char *)NULL, "/") == 0, EINVAL, kernel_panic);
+
+  puts("Freeing");
+  free(handle);
+  free(dirent);
+
+  puts("[KERNEL EXIT]");
   return SUCCESS;
+
+kernel_panic:
+  printf("\n\r[KERNEL PANIC] FAILED EXPRESSION: (%s) (code: %d)\n\r", err_msg,
+         err);
+  return err;
 }

@@ -36,7 +36,7 @@ typedef struct dirent {
   char name[256];
 } dirent_t;
 
-typedef void *(*open_dir_t)(const char *path);
+typedef void *(*open_dir_t)(blk_dev_t *dev, const char *path);
 typedef int (*read_dir_t)(void *handle, dirent_t *dirent);
 typedef void (*close_dir_t)(void *handle);
 
@@ -71,9 +71,10 @@ typedef struct vfs_mount {
 extern vfs_mount_t *mounted_devices[];
 extern int mounted_devices_pos;
 
+char *vfs_next_subd(char *path);
 int vfs_register_driver(fs_driver_t *driver);
 
-void *vfs_opendir(const char *path);
+void *vfs_opendir(blk_dev_t *dev, const char *path);
 int vfs_readdir(void *handle, dirent_t *dirent);
 void vfs_closedir(void *handle);
 

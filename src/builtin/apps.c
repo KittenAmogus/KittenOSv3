@@ -23,6 +23,7 @@ int help_app_func(int argc, char **argv) {
       printf(" * -- BROKEN APP --\n");
     }
   }
+  printf(" * exit - Exits shell\n");
 
   return SUCCESS;
 }

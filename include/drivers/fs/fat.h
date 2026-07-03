@@ -87,7 +87,7 @@ typedef enum {
 typedef struct fat_dirent {
   char Name[11];        // Filename
   uint8_t Attr;         // File attributes
-  uint8_t NTRes;        // Optiobal flags
+  uint8_t NTRes;        // Optional flags
   uint8_t CrtTimeTenth; // Subseconds (0)
   uint16_t CrtTime;     // Creation time
   uint16_t CrtDate;     // Creation date
@@ -119,6 +119,15 @@ typedef struct {
   uint32_t RootClus;     // Root cluster
   uint32_t FreeCount;    // Free clusters
 } fat_instance_t;
+
+typedef struct {
+  blk_dev_t *dev;             // Device
+  uint32_t current_cluster;   // Last read cluster
+  uint32_t current_sector;    // Last read sector
+  uint32_t start_sector;      // First sector in cluster
+  uint32_t byte_offset;       // Last read byte
+  uint8_t buffer[BLOCK_SIZE]; // Buffer for sector
+} fat_dir_handle_t;
 
 extern fs_driver_t fat_driver;
 

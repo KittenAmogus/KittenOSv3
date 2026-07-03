@@ -34,7 +34,7 @@ int vfs_register_driver(fs_driver_t *driver) {
   _fs_drivers[_fs_drivers_pos++] = driver;
   return SUCCESS;
 }
-void *vfs_opendir(const char *path) {
+void *vfs_opendir(blk_dev_t *dev, const char *path) {
   if (path == NULL)
     return NULL;
 
@@ -50,7 +50,7 @@ void *vfs_opendir(const char *path) {
     return NULL;
   }
 
-  vdrv->handle = vdrv->driver->opendir(path);
+  vdrv->handle = vdrv->driver->opendir(dev, path);
   return vdrv;
 }
 
@@ -166,4 +166,31 @@ int vfs_umountfs(const char *path, const char *mountpoint) {
   }
 
   return EINVAL;
+}
+
+char *vfs_next_subd(char *path) {
+  if (path == NULL)
+    return NULL;
+
+  /* lpathip slash */
+  while (*path == '/' && *path != 0)
+    ++path;
+
+  /* Skip to first slash */
+  while (*path != '/' && *path != 0)
+    ++path;
+  if (*path == 0)
+    return NULL;
+
+  /* Replace slash to '\0' */
+  while (*path == '/' && *path != 0) {
+    *path = 0;
+    ++path;
+  }
+
+  /* End of pathing */
+  if (*path == '/' || *path == 0)
+    return NULL;
+
+  return path;
 }
