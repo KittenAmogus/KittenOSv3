@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char hex_chars[] = "0123456789ABCDEF";
 FILE *_file_descriptors[MAX_FILE_DESCRIPTORS] = {NULL};
 FILE *stdin = NULL;
 FILE *stdout = NULL;
@@ -174,6 +175,11 @@ uint32_t putint(int32_t x) {
   return wr;
 }
 
+void putbyte(uint8_t byte) {
+  putchar(hex_chars[(byte >> 4) & 0x0F]);
+  putchar(hex_chars[byte & 0x0F]);
+}
+
 uint32_t puthex(int32_t x) {
   char buff[12];
   uint32_t i = 0;
@@ -252,6 +258,13 @@ int printf(const char *format, ...) {
       case 'd': {
         unsigned int d = (unsigned int)va_arg(args, uint32_t);
         written += putint(d);
+        break;
+      }
+
+      case 'b': {
+        unsigned char b = (uint8_t)va_arg(args, uint8_t);
+        written += 2;
+        putbyte(b);
         break;
       }
 

@@ -15,33 +15,6 @@ const static char *SHELL_MSG = ("This is KittenShell\n"
 #define ISBLANK(ch) (ch == ' ' || ch == '\t' || ch == '\n')
 #define ISNTBLANK(ch) (ch != ' ' && ch != '\t' && ch != '\n')
 
-static char *next_word(char *str) {
-  if (str == NULL)
-    return NULL;
-
-  /* lstrip spaces */
-  while (ISBLANK(*str) && *str != 0)
-    ++str;
-
-  /* Skip to first space */
-  while (ISNTBLANK(*str) && *str != 0)
-    ++str;
-  if (*str == 0)
-    return NULL;
-
-  /* Replace spaces to '\0' */
-  while (ISBLANK(*str) && *str != 0) {
-    *str = 0;
-    ++str;
-  }
-
-  /* End of string */
-  if (ISBLANK(*str) || *str == 0)
-    return NULL;
-
-  return str;
-}
-
 int shell_app_func(int argc, char **argv) {
   char *input;
   size_t input_len;
@@ -57,7 +30,7 @@ int shell_app_func(int argc, char **argv) {
 
     /* Read input */
     input = malloc(256);
-    if (!getline(&input, &input_len, stdin)) {
+    if (getline(&input, &input_len, stdin) < 0) {
       puts("Error while reading stdin");
       free(input);
       return ENOMEM;
@@ -73,30 +46,19 @@ int shell_app_func(int argc, char **argv) {
       ++raw_8;
     *raw_8 = 0;
 
-    /* Parse CMD */
-    char **argv = malloc(sizeof(char *) * 4);
-    char *arg = input;
-    size_t argc = 0;
-    size_t mlc = 4;
+    int argc = 16;
+    char **argv = malloc(sizeof(char *) * argc);
+    if (argv == NULL) {
+      free(input);
+      return ENOMEM;
+    }
 
-    while (arg != NULL && ISNTBLANK(*arg)) {
-
-      argv[argc] = arg;
-      ++argc;
-
-      if (argc >= mlc) {
-        size_t nmlc = (mlc << 1);
-        void *new_argv = malloc(nmlc * sizeof(char *));
-        if (new_argv != NULL) {
-          memcpy(new_argv, argv, argc * sizeof(char *));
-          free(argv);
-          mlc = nmlc;
-          argv = new_argv;
-        } else {
-          break;
-        }
-      }
-      arg = (char *)next_word(arg);
+    argc = strsplit(input, ' ', argc, argv);
+    if (argc < 1) {
+      free(input);
+      free(argv);
+      puts("Failed to parse args");
+      return EINVAL;
     }
 
     if (*argv[0] != 0) {

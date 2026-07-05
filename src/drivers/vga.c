@@ -8,7 +8,7 @@
 static volatile uint16_t *_vga_buffer = (volatile uint16_t *)VGA_ADDR;
 static FILE _vga_fd;
 static int _vga_cursor_x = 0;
-static int _vga_cursor_y = 0;
+int _vga_cursor_y = 0;
 unsigned int _vga_anchor_pos = 0;
 
 static uint16_t _vga_attr = 0x17;

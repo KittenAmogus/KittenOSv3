@@ -80,6 +80,8 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
    *        MAIN KERNEL CODE
    * =============================== */
 
+  shell_app_func(0, NULL);
+
   char *err_msg;
   err = 0;
 
@@ -87,7 +89,7 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   puts("Running FAT32 tests...\n");
 
   puts("Creating ramdisk");
-  blk_dev_t *ramdisk = rd_createdev(128 << 10);
+  blk_dev_t *ramdisk = rd_createdev(64 << 20);
   ASSERT(ramdisk != NULL, ENOMEM, kernel_panic);
 
   puts("Registering ramdisk");
@@ -97,9 +99,42 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   err = vfs_makefs("/dev/ram0", "fat");
   ASSERT(err == 0, err, kernel_panic);
 
-  puts("Mounting filesystem");
+  /*puts("Mounting filesystem");
   err = vfs_mountfs("/dev/ram0", "/", "fat");
-  ASSERT(err == 0, err, kernel_panic);
+  ASSERT(err == 0, err, kernel_panic);*/
+
+  char *b = malloc(512 * 20);
+  ramdisk->read_sector(ramdisk, 480, b, 20);
+
+  /*
+  asm volatile("hlt");
+  asm volatile("hlt");
+  asm volatile("hlt");
+  */
+  int j = 0;
+  int a = 0;
+  size_t wr = 0;
+  extern int _vga_cursor_y;
+  do {
+    printf("%d | ", j);
+    a = 0;
+    for (int i = 0; i < 32; ++i) {
+      if (*b != 0)
+        a = 1;
+      printf("%b", *b);
+      ++b;
+      ++wr;
+    }
+    ++j;
+    printf(" |\n");
+
+    if (a == 0)
+      _vga_cursor_y--;
+
+    if (wr > 20480)
+      break;
+    // asm volatile("hlt");
+  } while (1);
 
   puts("Opening directory /root/test");
   void *handle = vfs_opendir("/root/test");
@@ -108,6 +143,12 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   puts("Opening directory /");
   handle = vfs_opendir("/");
   ASSERT(handle != NULL, ENOENT, kernel_panic);
+
+  puts("Creating /FILE*.TXT");
+  err = vfs_creat("/FILE1.TXT");
+  err = vfs_creat("/FILE2.TXT");
+  err = vfs_creat("/FILE3.TXT");
+  ASSERT(err == 0, err, kernel_panic);
 
   puts("Allocating dirent_t *dirent");
   dirent_t *dirent = malloc(sizeof(dirent_t));
@@ -120,6 +161,7 @@ int kmain(uint32_t magic, uint32_t mboot_addr) {
   while (errcode > -1) {
     errcode = vfs_readdir(handle, dirent);
     ASSERT(errcode > -2, EIO, kernel_panic);
+    printf("ERRCODE %d\n", errcode);
 
     if (errcode != EOF) {
       printf("|- [%s] (%d) '%s'\n",

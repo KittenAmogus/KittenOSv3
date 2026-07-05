@@ -44,6 +44,7 @@ void *malloc(size_t size) {
         new->prev = block;
         new->next = block->next;
         new->is_free = 1;
+        new->_padding = 0x0FFFFFFF;
 
         if (new->next != NULL) {
           new->next->prev = new;

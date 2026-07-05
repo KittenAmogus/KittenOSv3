@@ -4,7 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MEM_BLOCK_MAGIC 0xCA75C0DE
+// #define MEM_BLOCK_MAGIC 0xCA75C0DE
+#define MEM_BLOCK_MAGIC 0xAABBCCDD
 
 typedef struct mem_block {
   struct mem_block *prev;

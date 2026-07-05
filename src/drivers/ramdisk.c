@@ -59,6 +59,7 @@ blk_dev_t *rd_createdev(size_t size) {
         return NULL;
       }
 
+      dev->total_sectors = (size / BLOCK_SIZE);
       dev->id = (RD_DISK_PREFIX + i);
       dev->read_sector = _rd_read_sector;
       dev->write_sector = _rd_write_sector;
